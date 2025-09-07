@@ -1,0 +1,135 @@
+/* Root page styling */
+html, body, #root {
+  background-color: #4b0082; /* Deep purple background */
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: sans-serif;
+  color: white;
+}
+
+/* Centered content container */
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Game area styling */
+.game-area {
+  width: 320px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(145deg, #6d28d9, #4c1d95); /* Gradient background */
+  border: 3px solid transparent; /* Transparent base border */
+  border-image: linear-gradient(to right, #a855f7, #3b82f6) 1; /* Gradient border */
+  border-radius: 12px; /* Softer rounded corners */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.5); /* Shadow and glow */
+  transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover effect */
+}
+
+.game-area:hover {
+  transform: scale(1.02); /* Slight scale on hover */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(168, 85, 247, 0.7); /* Enhanced glow */
+}
+
+/* Game object (image) styling */
+.game-object {
+  width: 45px;
+  height: 45px;
+  position: absolute;
+  cursor: pointer;
+  object-fit: contain; /* Ensure images scale correctly */
+}
+
+/* Leaderboard card styling */
+.leaderboard-card {
+  background-color: #5a0e91; /* Darker purple */
+  color: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  width: 320px;
+  margin: 1rem auto;
+}
+
+/* Leaderboard table styling */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse; /* Ensure consistent spacing */
+}
+
+.leaderboard-table th, .leaderboard-table td {
+  padding: 0.5rem 1rem; /* Increased padding for better spacing */
+}
+
+.leaderboard-table th:first-child, .leaderboard-table td:first-child {
+  text-align: left;
+  width: 70%; /* Address column takes most space */
+}
+
+.leaderboard-table th:last-child, .leaderboard-table td:last-child {
+  text-align: right;
+  width: 30%; /* Score column takes less space, aligned far right */
+}
+
+/* Wallet button styling */
+.wallet-button {
+  background-color: #2563eb; /* Tailwind's bg-blue-600 */
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* Spawn button styling */
+.spawn-button {
+  background-color: #7c3aed; /* Tailwind's bg-purple-600 */
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* Logo animations */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Card styling */
+.card {
+  padding: 2em;
+}
+
+/* Documentation links */
+.read-the-docs {
+  color: #888;
+}
