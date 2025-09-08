@@ -5,7 +5,8 @@ import leaderboardABI from "./abi/EgoBustLeaderboard.json";
 
 const CONTRACT_ADDRESS = "0x9ba7b510fCd5f5Ce6d4b74992346a789Fc148e57";
 
-const IMAGES = Array.from({ length: 222 }, (_, i) => `/images/${i}.png`);
+// Images inside public/images (0.png → 77.png)
+const IMAGES = Array.from({ length: 78 }, (_, i) => `/images/${i}.png`);
 
 function App() {
   const [objects, setObjects] = useState([]);
@@ -22,8 +23,10 @@ function App() {
 
   const GAME_WIDTH = 320;
   const GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 24;
+  const IMAGE_SIZE = 24; // Image size for objects
+  const BORDER_WIDTH = 3; // Border width of game area (in pixels)
 
+  // Connect wallet
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert("No wallet found! Please install MetaMask.");
@@ -41,12 +44,12 @@ function App() {
     }
   };
 
-  
+  // Disconnect wallet
   const disconnectWallet = () => {
     setWalletAddress(null);
   };
 
-  
+  // Handle account changes
   useEffect(() => {
     if (!window.ethereum) return;
     const handleAccountsChanged = (accounts) => {
@@ -62,7 +65,7 @@ function App() {
     };
   }, []);
 
-  
+  // Spawn objects randomly within the game area, accounting for border
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
@@ -74,21 +77,21 @@ function App() {
     spawnIntervalRef.current = setInterval(() => {
       const newObj = {
         id: Date.now(),
-        x: Math.floor(Math.random() * (GAME_WIDTH - IMAGE_SIZE)),
-        y: Math.floor(Math.random() * (GAME_HEIGHT - IMAGE_SIZE)),
+        x: Math.floor(Math.random() * (GAME_WIDTH - IMAGE_SIZE - 2 * BORDER_WIDTH)), // Random x: 0 to 290
+        y: Math.floor(Math.random() * (GAME_HEIGHT - IMAGE_SIZE - 2 * BORDER_WIDTH)), // Random y: 0 to 354
         image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
-        spawnTime: Date.now(),
+        spawnTime: Date.now(), // Timestamp for tracking lifespan
       };
-      
+      // Debugging: Log spawn position and image
       console.log(`Spawned object at x: ${newObj.x}, y: ${newObj.y}, image: ${newObj.image}`);
       setObjects((prev) => {
-        
+        // Cap at 30 objects to maintain 20-30 on screen
         if (prev.length >= 30) {
           return [...prev.slice(1), newObj];
         }
         return [...prev, newObj];
       });
-    }, 300)
+    }, 300); // Spawn every 300ms
     return () => {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
@@ -97,7 +100,7 @@ function App() {
     };
   }, [gameStarted, gameOver, paused]);
 
-  
+  // Remove objects after 1 second if not clicked
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (cleanupIntervalRef.current) {
@@ -109,9 +112,9 @@ function App() {
     cleanupIntervalRef.current = setInterval(() => {
       const currentTime = Date.now();
       setObjects((prev) =>
-        prev.filter((obj) => currentTime - obj.spawnTime < 1000)
+        prev.filter((obj) => currentTime - obj.spawnTime < 1000) // Remove objects older than 1 second
       );
-    }, 100);
+    }, 100); // Check every 100ms
     return () => {
       if (cleanupIntervalRef.current) {
         clearInterval(cleanupIntervalRef.current);
@@ -120,7 +123,7 @@ function App() {
     };
   }, [gameStarted, gameOver, paused]);
 
-  
+  // Timer countdown
   useEffect(() => {
     if (!gameStarted || gameOver || paused) return;
     if (time > 0) {
@@ -128,7 +131,7 @@ function App() {
       return () => clearTimeout(timer);
     } else {
       setGameOver(true);
-      setObjects([]);
+      setObjects([]); // Clear objects when game ends
     }
   }, [time, gameStarted, gameOver, paused]);
 
@@ -157,7 +160,7 @@ function App() {
     setScore((prev) => prev + 10);
   };
 
-  
+  // Save score (on-chain)
   const saveScore = async () => {
     if (!window.ethereum) return alert("No wallet found!");
     if (!walletAddress) return alert("Please connect your wallet first!");
@@ -176,7 +179,7 @@ function App() {
     }
   };
 
- 
+  // Load leaderboard
   const loadLeaderboard = async () => {
     if (!window.ethereum) return;
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -184,6 +187,7 @@ function App() {
 
     try {
       const data = await contract.getLeaderboard();
+      // Filter to keep only the highest score per wallet
       const scoreMap = new Map();
       data.forEach((p) => {
         const wallet = p.wallet;
@@ -218,8 +222,8 @@ function App() {
         Wallet: {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not connected"}
       </div>
 
-      {}
-      <div className="flex gap-4 flex-wrap">
+      {/* Game Controls */}
+      <div className="flex gap-4 flex-wrap justify-center">
         {!gameStarted ? (
           <button onClick={startGame} className="bg-green-600 px-4 py-2 rounded-lg">
             Start Game
@@ -242,7 +246,7 @@ function App() {
         </button>
       </div>
 
-      {}
+      {/* Game Area */}
       <div
         className="relative overflow-hidden rounded-lg game-area"
         style={{ width: `${GAME_WIDTH}px`, height: `${GAME_HEIGHT}px`, backgroundColor: "#6d28d9" }}
@@ -262,7 +266,7 @@ function App() {
         ))}
       </div>
 
-      {}
+      {/* Game Over Screen */}
       {gameOver && (
         <div className="text-center">
           <p className="text-xl mb-2">Game Over! Final Score: {score}</p>
@@ -272,7 +276,7 @@ function App() {
         </div>
       )}
 
-      {}
+      {/* Leaderboard */}
       <div className="leaderboard-card w-80 bg-purple-700 p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-bold mb-2">Leaderboard</h2>
         {leaderboard.length === 0 ? (

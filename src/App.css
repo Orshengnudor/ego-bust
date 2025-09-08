@@ -1,98 +1,104 @@
 /* Root page styling */
 html, body, #root {
-  background-color: #4b0082; /* Deep purple background */
+  background-color: #4b0082;
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   font-family: sans-serif;
   color: white;
+  overflow-x: hidden; /* Prevent horizontal scroll on mobile */
 }
 
 /* Centered content container */
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem; /* Reduced padding for mobile */
   text-align: center;
+  box-sizing: border-box;
 }
 
 /* Game area styling */
 .game-area {
   width: 320px;
+  max-width: 90vw; /* Scale down on smaller screens */
+  height: 384px;
+  max-height: 50vh; /* Limit height on mobile */
   margin: 0 auto;
   position: relative;
   z-index: 1;
-  background: linear-gradient(145deg, #6d28d9, #4c1d95); /* Gradient background */
-  border: 3px solid transparent; /* Transparent base border */
-  border-image: linear-gradient(to right, #a855f7, #3b82f6) 1; /* Gradient border */
-  border-radius: 12px; /* Softer rounded corners */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.5); /* Shadow and glow */
-  transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover effect */
+  background: linear-gradient(145deg, #6d28d9, #4c1d95);
+  border: 3px solid transparent;
+  border-image: linear-gradient(to right, #a855f7, #3b82f6) 1;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden; /* Ensure images stay within bounds */
 }
 
 .game-area:hover {
-  transform: scale(1.02); /* Slight scale on hover */
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(168, 85, 247, 0.7); /* Enhanced glow */
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(168, 85, 247, 0.7);
 }
 
 /* Game object (image) styling */
 .game-object {
-  width: 45px;
-  height: 45px;
+  width: 24px;
+  height: 24px;
   position: absolute;
   cursor: pointer;
-  object-fit: contain; /* Ensure images scale correctly */
+  object-fit: contain;
 }
 
 /* Leaderboard card styling */
 .leaderboard-card {
-  background-color: #5a0e91; /* Darker purple */
+  background-color: #5a0e91;
   color: white;
   border-radius: 0.5rem;
   padding: 1rem;
   width: 320px;
+  max-width: 90vw; /* Scale down on mobile */
   margin: 1rem auto;
 }
 
 /* Leaderboard table styling */
 .leaderboard-table {
   width: 100%;
-  border-collapse: collapse; /* Ensure consistent spacing */
+  border-collapse: collapse;
 }
 
 .leaderboard-table th, .leaderboard-table td {
-  padding: 0.5rem 1rem; /* Increased padding for better spacing */
+  padding: 0.5rem 1rem;
 }
 
 .leaderboard-table th:first-child, .leaderboard-table td:first-child {
   text-align: left;
-  width: 70%; /* Address column takes most space */
+  width: 70%;
 }
 
 .leaderboard-table th:last-child, .leaderboard-table td:last-child {
   text-align: right;
-  width: 30%; /* Score column takes less space, aligned far right */
+  width: 30%;
 }
 
 /* Wallet button styling */
 .wallet-button {
-  background-color: #2563eb; /* Tailwind's bg-blue-600 */
-  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  padding: 0.75rem 1.5rem; /* Larger padding for touch */
   border-radius: 0.5rem;
   color: white;
-  border: none;
-  cursor: pointer;
+  font-size: 1rem; /* Larger font for readability */
 }
 
-/* Spawn button styling */
-.spawn-button {
-  background-color: #7c3aed; /* Tailwind's bg-purple-600 */
-  padding: 0.5rem 1rem;
+/* Spawn button styling (Start, Quit, Pause, Resume) */
+button.bg-green-600,
+button.bg-red-600,
+button.bg-yellow-600,
+button.bg-blue-600 {
+  padding: 0.75rem 1.5rem; /* Larger padding for touch */
   border-radius: 0.5rem;
-  color: white;
-  border: none;
-  cursor: pointer;
+  font-size: 1rem; /* Larger font for readability */
 }
 
 /* Logo animations */
@@ -132,4 +138,44 @@ html, body, #root {
 /* Documentation links */
 .read-the-docs {
   color: #888;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  #root {
+    padding: 0.5rem;
+  }
+
+  .game-area {
+    width: 80vw; /* Smaller width on mobile */
+    height: 40vh; /* Adjust height proportionally */
+  }
+
+  .leaderboard-card {
+    width: 80vw;
+  }
+
+  h1 {
+    font-size: 2rem; /* Smaller title on mobile */
+  }
+
+  .text-lg {
+    font-size: 1rem; /* Smaller time/score text */
+  }
+
+  .text-sm {
+    font-size: 0.875rem; /* Smaller wallet text */
+  }
+
+  .text-xl {
+    font-size: 1.125rem; /* Smaller game over text */
+  }
+
+  button.bg-green-600,
+  button.bg-red-600,
+  button.bg-yellow-600,
+  button.bg-blue-600 {
+    padding: 0.5rem 1rem; /* Slightly smaller buttons on mobile */
+    font-size: 0.875rem;
+  }
 }
