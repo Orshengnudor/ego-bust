@@ -5,8 +5,8 @@ import leaderboardABI from "./abi/EgoBustLeaderboard.json";
 
 const CONTRACT_ADDRESS = "0x9ba7b510fCd5f5Ce6d4b74992346a789Fc148e57";
 
-// Images inside public/images (0.png → 77.png)
-const IMAGES = Array.from({ length: 78 }, (_, i) => `/images/${i}.png`);
+// Images inside public/images (0.png → 221.png)
+const IMAGES = Array.from({ length: 221 }, (_, i) => `/images/${i}.png`);
 
 function App() {
   const [objects, setObjects] = useState([]);
@@ -18,13 +18,15 @@ function App() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [walletAddress, setWalletAddress] = useState(null);
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
+  const [clickedObjects, setClickedObjects] = useState(new Set());
   const spawnIntervalRef = useRef(null);
   const cleanupIntervalRef = useRef(null);
+  const gameAreaRef = useRef(null);
 
-  const GAME_WIDTH = 320;
-  const GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 24; // Image size for objects
-  const BORDER_WIDTH = 3; // Border width of game area (in pixels)
+  const BASE_GAME_WIDTH = 320;
+  const BASE_GAME_HEIGHT = 384;
+  const IMAGE_SIZE = 40;
+  const BORDER_WIDTH = 3;
 
   // Connect wallet
   const connectWallet = async () => {
@@ -65,7 +67,7 @@ function App() {
     };
   }, []);
 
-  // Spawn objects randomly within the game area, accounting for border
+  // Spawn objects randomly within the game area
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
@@ -75,23 +77,24 @@ function App() {
       return;
     }
     spawnIntervalRef.current = setInterval(() => {
+      const gameArea = gameAreaRef.current;
+      const width = gameArea ? gameArea.offsetWidth : BASE_GAME_WIDTH;
+      const height = gameArea ? gameArea.offsetHeight : BASE_GAME_HEIGHT;
       const newObj = {
         id: Date.now(),
-        x: Math.floor(Math.random() * (GAME_WIDTH - IMAGE_SIZE - 2 * BORDER_WIDTH)), // Random x: 0 to 290
-        y: Math.floor(Math.random() * (GAME_HEIGHT - IMAGE_SIZE - 2 * BORDER_WIDTH)), // Random y: 0 to 354
+        x: Math.floor(Math.random() * (width - IMAGE_SIZE - 2 * BORDER_WIDTH)),
+        y: Math.floor(Math.random() * (height - IMAGE_SIZE - 2 * BORDER_WIDTH)),
         image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
-        spawnTime: Date.now(), // Timestamp for tracking lifespan
+        spawnTime: Date.now(),
       };
-      // Debugging: Log spawn position and image
       console.log(`Spawned object at x: ${newObj.x}, y: ${newObj.y}, image: ${newObj.image}`);
       setObjects((prev) => {
-        // Cap at 30 objects to maintain 20-30 on screen
         if (prev.length >= 30) {
           return [...prev.slice(1), newObj];
         }
         return [...prev, newObj];
       });
-    }, 300); // Spawn every 300ms
+    }, 300);
     return () => {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
@@ -112,9 +115,9 @@ function App() {
     cleanupIntervalRef.current = setInterval(() => {
       const currentTime = Date.now();
       setObjects((prev) =>
-        prev.filter((obj) => currentTime - obj.spawnTime < 1000) // Remove objects older than 1 second
+        prev.filter((obj) => currentTime - obj.spawnTime < 1000)
       );
-    }, 100); // Check every 100ms
+    }, 100);
     return () => {
       if (cleanupIntervalRef.current) {
         clearInterval(cleanupIntervalRef.current);
@@ -131,7 +134,7 @@ function App() {
       return () => clearTimeout(timer);
     } else {
       setGameOver(true);
-      setObjects([]); // Clear objects when game ends
+      setObjects([]);
     }
   }, [time, gameStarted, gameOver, paused]);
 
@@ -142,6 +145,7 @@ function App() {
     setScore(0);
     setTime(30);
     setObjects([]);
+    setClickedObjects(new Set());
   };
 
   const quitGame = () => {
@@ -149,6 +153,7 @@ function App() {
     setGameOver(false);
     setPaused(false);
     setObjects([]);
+    setClickedObjects(new Set());
   };
 
   const togglePause = () => {
@@ -156,8 +161,16 @@ function App() {
   };
 
   const bustObject = (id) => {
-    setObjects((prev) => prev.filter((obj) => obj.id !== id));
-    setScore((prev) => prev + 10);
+    setClickedObjects((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setObjects((prev) => prev.filter((obj) => obj.id !== id));
+      setClickedObjects((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+      setScore((prev) => prev + 10);
+    }, 300);
   };
 
   // Save score (on-chain)
@@ -187,7 +200,6 @@ function App() {
 
     try {
       const data = await contract.getLeaderboard();
-      // Filter to keep only the highest score per wallet
       const scoreMap = new Map();
       data.forEach((p) => {
         const wallet = p.wallet;
@@ -229,8 +241,11 @@ function App() {
             Start Game
           </button>
         ) : (
-          <button onClick={quitGame} className="bg-red-600 px-4 py-2 rounded-lg">
-            Quit Game
+          <button
+            onClick={gameOver ? startGame : quitGame}
+            className="bg-red-600 px-4 py-2 rounded-lg"
+          >
+            {gameOver ? "Restart" : "Quit Game"}
           </button>
         )}
         {gameStarted && !gameOver && (
@@ -249,14 +264,14 @@ function App() {
       {/* Game Area */}
       <div
         className="relative overflow-hidden rounded-lg game-area"
-        style={{ width: `${GAME_WIDTH}px`, height: `${GAME_HEIGHT}px`, backgroundColor: "#6d28d9" }}
+        ref={gameAreaRef}
       >
         {objects.map((obj) => (
           <img
             key={obj.id}
             src={obj.image}
             alt="object"
-            className="game-object"
+            className={`game-object ${clickedObjects.has(obj.id) ? "pop-effect" : ""}`}
             style={{
               left: `${obj.x}px`,
               top: `${obj.y}px`,
