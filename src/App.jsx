@@ -28,6 +28,14 @@ function App() {
   const IMAGE_SIZE = 40;
   const BORDER_WIDTH = 3;
 
+  // ✅ Preload images for faster spawn
+  useEffect(() => {
+    IMAGES.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   // Connect wallet
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -87,7 +95,6 @@ function App() {
         image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
         spawnTime: Date.now(),
       };
-      console.log(`Spawned object at x: ${newObj.x}, y: ${newObj.y}, image: ${newObj.image}`);
       setObjects((prev) => {
         if (prev.length >= 30) {
           return [...prev.slice(1), newObj];
@@ -227,7 +234,7 @@ function App() {
   const displayedLeaderboard = showFullLeaderboard ? leaderboard : leaderboard.slice(0, 5);
 
   return (
-    <div className="bg-purple-900 text-white min-h-screen flex flex-col items-center justify-center gap-8">
+    <div className="bg-purple-900 text-white min-h-screen flex flex-col items-center justify-center gap-6 p-2">
       <h1 className="text-4xl font-bold">Ego Bust</h1>
       <div className="text-lg">Time: {time}s | Score: {score}</div>
       <div className="text-sm">
@@ -261,10 +268,10 @@ function App() {
         </button>
       </div>
 
-      {/* Game Area */}
+      {/* ✅ Responsive Game Area */}
       <div
-        className="relative overflow-hidden rounded-lg game-area"
         ref={gameAreaRef}
+        className="relative overflow-hidden rounded-lg game-area w-full max-w-md h-[70vh] bg-purple-800"
       >
         {objects.map((obj) => (
           <img
