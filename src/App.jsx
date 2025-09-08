@@ -25,7 +25,7 @@ function App() {
 
   const BASE_GAME_WIDTH = 320;
   const BASE_GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 35;
+  const IMAGE_SIZE = 35; // Updated to 35 as requested
   const BORDER_WIDTH = 3;
 
   // Preload images to reduce loading delay
@@ -348,5 +348,4 @@ function App() {
     </div>
   );
 }
-
 export default App;
