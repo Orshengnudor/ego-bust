@@ -1,6 +1,6 @@
 /* Root page styling */
 html, body, #root {
-  background-color: #2a0847;
+  background-color: #290542;
   margin: 0;
   padding: 0;
   height: 100%;
@@ -8,38 +8,44 @@ html, body, #root {
   font-family: sans-serif;
   color: white;
   overflow-x: hidden;
+  overflow-y: auto; /* Enable vertical scrolling */
 }
 
 /* Centered content container */
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1rem; /* Increased padding for PC */
   text-align: center;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start; /* Start from top */
+  min-height: 100vh;
 }
 
 /* Game area styling */
 .game-area {
-  width: 90vw;
-  max-width: 320px;
+  width: 100vw; /* Full width for mobile */
+  max-width: 320px; /* Cap at original size */
   aspect-ratio: 320 / 384;
   position: relative;
   z-index: 1;
-  background: linear-gradient(145deg, #57069d, #320a4f);
+  background: linear-gradient(145deg, #6d0da9, #630e9c);
   border: 3px solid transparent;
-  border-image: linear-gradient(to right, #db9c08, #ef1414) 1;
+  border-image: linear-gradient(to right, #089b88, #e00a0a) 1;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(168, 85, 247, 0.5);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
   display: block;
   margin: 0 auto;
+  padding: 8px;
+  visibility: visible;
 }
 
+/* Game area hover effect */
 .game-area:hover {
   transform: scale(1.02);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(168, 85, 247, 0.7);
@@ -77,11 +83,11 @@ html, body, #root {
 
 /* Leaderboard card styling */
 .leaderboard-card {
-  background-color: #0a0110;
+  background-color: #050108;
   color: white;
   border-radius: 0.5rem;
   padding: 1rem;
-  width: 90vw;
+  width: 100vw;
   max-width: 320px;
   margin: 1rem auto;
 }
@@ -167,16 +173,17 @@ button.bg-blue-600 {
 /* Mobile-specific adjustments */
 @media (max-width: 768px) {
   #root {
-    padding: 0.5rem;
+    padding: 0.25rem;
   }
 
   .game-area {
-    width: 85vw;
+    width: 95vw;
     max-width: 300px;
+    padding: 4px;
   }
 
   .leaderboard-card {
-    width: 85vw;
+    width: 95vw;
     max-width: 300px;
   }
 
@@ -202,5 +209,22 @@ button.bg-blue-600 {
   button.bg-blue-600 {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
+  }
+}
+
+/* Larger screens */
+@media (min-width: 769px) {
+  #root {
+    padding: 2rem; /* More padding for PC */
+  }
+
+  .game-area {
+    width: 80vw; /* Slightly smaller for PC to fit better */
+    max-width: 320px;
+  }
+
+  .leaderboard-card {
+    width: 80vw;
+    max-width: 320px;
   }
 }

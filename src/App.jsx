@@ -5,7 +5,7 @@ import leaderboardABI from "./abi/EgoBustLeaderboard.json";
 
 const CONTRACT_ADDRESS = "0x9ba7b510fCd5f5Ce6d4b74992346a789Fc148e57";
 
-// Images inside public/images (0.png → 221.png)
+// Images inside public/images (0.png → 220.png)
 const IMAGES = Array.from({ length: 221 }, (_, i) => `/images/${i}.png`);
 
 function App() {
@@ -25,15 +25,16 @@ function App() {
 
   const BASE_GAME_WIDTH = 320;
   const BASE_GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 40;
+  const IMAGE_SIZE = 35; // Updated to 35 as requested
   const BORDER_WIDTH = 3;
 
-  // ✅ Preload images for faster spawn
+  // Preload images to reduce loading delay
   useEffect(() => {
     IMAGES.forEach((src) => {
       const img = new Image();
       img.src = src;
     });
+    console.log("Preloaded 221 images");
   }, []);
 
   // Connect wallet
@@ -77,35 +78,45 @@ function App() {
 
   // Spawn objects randomly within the game area
   useEffect(() => {
+    console.log("Spawn effect triggered:", { gameStarted, gameOver, paused });
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
         spawnIntervalRef.current = null;
+        console.log("Cleared spawn interval");
       }
       return;
     }
-    spawnIntervalRef.current = setInterval(() => {
+    // Spawn one initial object immediately
+    const spawnObject = () => {
       const gameArea = gameAreaRef.current;
       const width = gameArea ? gameArea.offsetWidth : BASE_GAME_WIDTH;
       const height = gameArea ? gameArea.offsetHeight : BASE_GAME_HEIGHT;
-      const newObj = {
-        id: Date.now(),
-        x: Math.floor(Math.random() * (width - IMAGE_SIZE - 2 * BORDER_WIDTH)),
-        y: Math.floor(Math.random() * (height - IMAGE_SIZE - 2 * BORDER_WIDTH)),
-        image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
-        spawnTime: Date.now(),
-      };
-      setObjects((prev) => {
-        if (prev.length >= 30) {
-          return [...prev.slice(1), newObj];
-        }
-        return [...prev, newObj];
-      });
-    }, 300);
+      console.log("Game area dimensions:", { width, height });
+      if (width > 0 && height > 0) { // Ensure valid dimensions
+        const newObj = {
+          id: Date.now(),
+          x: Math.floor(Math.random() * (width - IMAGE_SIZE - 2 * BORDER_WIDTH)),
+          y: Math.floor(Math.random() * (height - IMAGE_SIZE - 2 * BORDER_WIDTH)),
+          image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
+          spawnTime: Date.now(),
+        };
+        console.log(`Spawned object at x: ${newObj.x}, y: ${newObj.y}, image: ${newObj.image}`);
+        setObjects((prev) => {
+          if (prev.length >= 30) {
+            return [...prev.slice(1), newObj];
+          }
+          return [...prev, newObj];
+        });
+      }
+    };
+    spawnObject(); // Spawn one object immediately
+    spawnIntervalRef.current = setInterval(spawnObject, 200); // 200ms for faster spawning
     return () => {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
         spawnIntervalRef.current = null;
+        console.log("Cleared spawn interval on cleanup");
       }
     };
   }, [gameStarted, gameOver, paused]);
@@ -146,6 +157,7 @@ function App() {
   }, [time, gameStarted, gameOver, paused]);
 
   const startGame = () => {
+    console.log("Starting game...");
     setGameStarted(true);
     setGameOver(false);
     setPaused(false);
@@ -153,6 +165,7 @@ function App() {
     setTime(30);
     setObjects([]);
     setClickedObjects(new Set());
+    console.log("Game state after start:", { gameStarted: true, gameOver: false, paused: false, score: 0, time: 30 });
   };
 
   const quitGame = () => {
@@ -234,7 +247,7 @@ function App() {
   const displayedLeaderboard = showFullLeaderboard ? leaderboard : leaderboard.slice(0, 5);
 
   return (
-    <div className="bg-purple-900 text-white min-h-screen flex flex-col items-center justify-center gap-6 p-2">
+    <div className="bg-purple-900 text-white min-h-screen flex flex-col items-center gap-4">
       <h1 className="text-4xl font-bold">Ego Bust</h1>
       <div className="text-lg">Time: {time}s | Score: {score}</div>
       <div className="text-sm">
@@ -250,7 +263,7 @@ function App() {
         ) : (
           <button
             onClick={gameOver ? startGame : quitGame}
-            className="bg-red-600 px-4 py-2 rounded-lg"
+            className={`px-4 py-2 rounded-lg ${gameOver ? "bg-green-600" : "bg-red-600"}`}
           >
             {gameOver ? "Restart" : "Quit Game"}
           </button>
@@ -268,10 +281,10 @@ function App() {
         </button>
       </div>
 
-      {/* ✅ Responsive Game Area */}
+      {/* Game Area */}
       <div
+        className="relative overflow-hidden rounded-lg game-area"
         ref={gameAreaRef}
-        className="relative overflow-hidden rounded-lg game-area w-full max-w-md h-[70vh] bg-purple-800"
       >
         {objects.map((obj) => (
           <img
