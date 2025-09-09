@@ -1,4 +1,4 @@
-/* Root page styling */
+/* Root page styling */ 
 html, body, #root {
   background-color: #290542;
   margin: 0;
@@ -59,6 +59,12 @@ html, body, #root {
   cursor: pointer;
   object-fit: contain;
   transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Prevent clicking when paused */
+.paused .game-object {
+  pointer-events: none;
+  opacity: 0.6; /* dim objects slightly so players know they're inactive */
 }
 
 /* Popping effect for clicked images */

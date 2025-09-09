@@ -25,10 +25,10 @@ function App() {
 
   const BASE_GAME_WIDTH = 320;
   const BASE_GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 35; // Updated to 35 as requested
+  const IMAGE_SIZE = 35;
   const BORDER_WIDTH = 3;
 
-  // Preload images to reduce loading delay
+  // Preload images
   useEffect(() => {
     IMAGES.forEach((src) => {
       const img = new Image();
@@ -76,24 +76,20 @@ function App() {
     };
   }, []);
 
-  // Spawn objects randomly within the game area
+  // Spawn objects
   useEffect(() => {
-    console.log("Spawn effect triggered:", { gameStarted, gameOver, paused });
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
         spawnIntervalRef.current = null;
-        console.log("Cleared spawn interval");
       }
       return;
     }
-    // Spawn one initial object immediately
     const spawnObject = () => {
       const gameArea = gameAreaRef.current;
       const width = gameArea ? gameArea.offsetWidth : BASE_GAME_WIDTH;
       const height = gameArea ? gameArea.offsetHeight : BASE_GAME_HEIGHT;
-      console.log("Game area dimensions:", { width, height });
-      if (width > 0 && height > 0) { // Ensure valid dimensions
+      if (width > 0 && height > 0) {
         const newObj = {
           id: Date.now(),
           x: Math.floor(Math.random() * (width - IMAGE_SIZE - 2 * BORDER_WIDTH)),
@@ -101,7 +97,6 @@ function App() {
           image: IMAGES[Math.floor(Math.random() * IMAGES.length)],
           spawnTime: Date.now(),
         };
-        console.log(`Spawned object at x: ${newObj.x}, y: ${newObj.y}, image: ${newObj.image}`);
         setObjects((prev) => {
           if (prev.length >= 30) {
             return [...prev.slice(1), newObj];
@@ -110,18 +105,17 @@ function App() {
         });
       }
     };
-    spawnObject(); // Spawn one object immediately
-    spawnIntervalRef.current = setInterval(spawnObject, 200); // 200ms for faster spawning
+    spawnObject();
+    spawnIntervalRef.current = setInterval(spawnObject, 200);
     return () => {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
         spawnIntervalRef.current = null;
-        console.log("Cleared spawn interval on cleanup");
       }
     };
   }, [gameStarted, gameOver, paused]);
 
-  // Remove objects after 1 second if not clicked
+  // Remove objects after 1s
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (cleanupIntervalRef.current) {
@@ -144,7 +138,7 @@ function App() {
     };
   }, [gameStarted, gameOver, paused]);
 
-  // Timer countdown
+  // Timer
   useEffect(() => {
     if (!gameStarted || gameOver || paused) return;
     if (time > 0) {
@@ -157,7 +151,6 @@ function App() {
   }, [time, gameStarted, gameOver, paused]);
 
   const startGame = () => {
-    console.log("Starting game...");
     setGameStarted(true);
     setGameOver(false);
     setPaused(false);
@@ -165,7 +158,6 @@ function App() {
     setTime(30);
     setObjects([]);
     setClickedObjects(new Set());
-    console.log("Game state after start:", { gameStarted: true, gameOver: false, paused: false, score: 0, time: 30 });
   };
 
   const quitGame = () => {
@@ -180,7 +172,9 @@ function App() {
     setPaused((prev) => !prev);
   };
 
+  // ✅ Prevent bust when paused
   const bustObject = (id) => {
+    if (paused) return; // stop cheating exploit
     setClickedObjects((prev) => new Set(prev).add(id));
     setTimeout(() => {
       setObjects((prev) => prev.filter((obj) => obj.id !== id));
@@ -193,7 +187,7 @@ function App() {
     }, 300);
   };
 
-  // Save score (on-chain)
+  // Save score
   const saveScore = async () => {
     if (!window.ethereum) return alert("No wallet found!");
     if (!walletAddress) return alert("Please connect your wallet first!");
@@ -283,7 +277,7 @@ function App() {
 
       {/* Game Area */}
       <div
-        className="relative overflow-hidden rounded-lg game-area"
+        className={`relative overflow-hidden rounded-lg game-area ${paused ? "paused" : ""}`}
         ref={gameAreaRef}
       >
         {objects.map((obj) => (
