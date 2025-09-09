@@ -28,8 +28,8 @@ html, body, #root {
 /* Game area styling */
 .game-area {
   width: 100vw; /* Full width for mobile */
-  max-width: 320px; /* default cap */
-  aspect-ratio: 320 / 220;
+  max-width: 320px; /* Cap at original size */
+  aspect-ratio: 320 / 384;
   position: relative;
   z-index: 1;
   background: linear-gradient(145deg, #6d0da9, #630e9c);
@@ -177,7 +177,7 @@ button.bg-blue-600 {
   }
 
   .game-area {
-    width: 95vw;   /* fit small screens */
+    width: 95vw;
     max-width: 300px;
     padding: 4px;
   }
@@ -219,12 +219,12 @@ button.bg-blue-600 {
   }
 
   .game-area {
-    width: 80vw;       /* take wider space */
-    max-width: 700px;  /* allow expansion on PC */
+    width: 80vw; /* Slightly smaller for PC to fit better */
+    max-width: 320px;
   }
 
   .leaderboard-card {
     width: 80vw;
-    max-width: 700px;
+    max-width: 320px;
   }
 }
