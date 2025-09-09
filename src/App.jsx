@@ -23,9 +23,7 @@ function App() {
   const cleanupIntervalRef = useRef(null);
   const gameAreaRef = useRef(null);
 
-  const BASE_GAME_WIDTH = 320;
-  const BASE_GAME_HEIGHT = 384;
-  const IMAGE_SIZE = 35; // Updated to 35 as requested
+  const IMAGE_SIZE = 35; 
   const BORDER_WIDTH = 3;
 
   // Preload images to reduce loading delay
@@ -87,13 +85,17 @@ function App() {
       }
       return;
     }
-    // Spawn one initial object immediately
+
     const spawnObject = () => {
       const gameArea = gameAreaRef.current;
-      const width = gameArea ? gameArea.offsetWidth : BASE_GAME_WIDTH;
-      const height = gameArea ? gameArea.offsetHeight : BASE_GAME_HEIGHT;
+      if (!gameArea) return;
+
+      const width = gameArea.offsetWidth;
+      const height = gameArea.offsetHeight;
+
       console.log("Game area dimensions:", { width, height });
-      if (width > 0 && height > 0) { // Ensure valid dimensions
+
+      if (width > 0 && height > 0) {
         const newObj = {
           id: Date.now(),
           x: Math.floor(Math.random() * (width - IMAGE_SIZE - 2 * BORDER_WIDTH)),
@@ -110,8 +112,9 @@ function App() {
         });
       }
     };
-    spawnObject(); // Spawn one object immediately
-    spawnIntervalRef.current = setInterval(spawnObject, 200); // 200ms for faster spawning
+
+    spawnObject(); 
+    spawnIntervalRef.current = setInterval(spawnObject, 200); 
     return () => {
       if (spawnIntervalRef.current) {
         clearInterval(spawnIntervalRef.current);
