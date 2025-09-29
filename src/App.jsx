@@ -3,12 +3,13 @@ import { ethers } from "ethers";
 import "./App.css";
 import leaderboardABI from "./abi/EgoBustLeaderboard.json";
 
-const CONTRACT_ADDRESS = "0x9ba7b510fCd5f5Ce6d4b74992346a789Fc148e57";
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+const MONAD_GAME_ID = import.meta.env.VITE_MONAD_GAME_ID;
 
 // Images inside public/images (0.png → 220.png)
 const IMAGES = Array.from({ length: 221 }, (_, i) => `/images/${i}.png`);
 
-function App() {
+function GameApp() {
   const [objects, setObjects] = useState([]);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(30);
@@ -16,9 +17,11 @@ function App() {
   const [gameStarted, setGameStarted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [walletAddress, setWalletAddress] = useState(null);
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
   const [clickedObjects, setClickedObjects] = useState(new Set());
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [playerId, setPlayerId] = useState(null);
+
   const spawnIntervalRef = useRef(null);
   const cleanupIntervalRef = useRef(null);
   const gameAreaRef = useRef(null);
@@ -37,44 +40,28 @@ function App() {
     console.log("Preloaded 221 images");
   }, []);
 
-  // Connect wallet
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      alert("No wallet found! Please install MetaMask.");
-      return;
-    }
+  // Login with Monad Game ID
+  const login = async () => {
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      if (accounts.length > 0) {
-        setWalletAddress(accounts[0]);
-      }
+      const res = await fetch("https://api.multisynq.io/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId: MONAD_GAME_ID }),
+      });
+      if (!res.ok) throw new Error("Login failed");
+      const data = await res.json();
+      setLoggedIn(true);
+      setPlayerId(`${MONAD_GAME_ID}:${data.player?.id || "guest"}`);
     } catch (err) {
-      console.error("Wallet connection error:", err);
-      alert("Failed to connect wallet");
+      console.error("Login error:", err);
+      alert("Login failed");
     }
   };
 
-  // Disconnect wallet
-  const disconnectWallet = () => {
-    setWalletAddress(null);
+  const logout = () => {
+    setLoggedIn(false);
+    setPlayerId(null);
   };
-
-  // Handle account changes
-  useEffect(() => {
-    if (!window.ethereum) return;
-    const handleAccountsChanged = (accounts) => {
-      if (accounts.length === 0) {
-        setWalletAddress(null);
-      } else {
-        setWalletAddress(accounts[0]);
-      }
-    };
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
-    return () => {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-    };
-  }, []);
 
   // Spawn objects
   useEffect(() => {
@@ -174,7 +161,7 @@ function App() {
 
   // ✅ Prevent bust when paused
   const bustObject = (id) => {
-    if (paused) return; // stop cheating exploit
+    if (paused) return;
     setClickedObjects((prev) => new Set(prev).add(id));
     setTimeout(() => {
       setObjects((prev) => prev.filter((obj) => obj.id !== id));
@@ -189,16 +176,15 @@ function App() {
 
   // Save score
   const saveScore = async () => {
-    if (!window.ethereum) return alert("No wallet found!");
-    if (!walletAddress) return alert("Please connect your wallet first!");
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, leaderboardABI, signer);
-
+    if (!loggedIn || !playerId) return alert("Please login first!");
     try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, leaderboardABI, signer);
+
       const tx = await contract.saveScore(score);
       await tx.wait();
-      alert("Score saved on-chain!");
+      alert(`Score saved on-chain! Game ID: ${playerId}`);
       loadLeaderboard();
     } catch (err) {
       console.error("Save score error:", err);
@@ -208,11 +194,10 @@ function App() {
 
   // Load leaderboard
   const loadLeaderboard = async () => {
-    if (!window.ethereum) return;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, leaderboardABI, provider);
-
     try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, leaderboardABI, provider);
+
       const data = await contract.getLeaderboard();
       const scoreMap = new Map();
       data.forEach((p) => {
@@ -245,7 +230,7 @@ function App() {
       <h1 className="text-4xl font-bold">Ego Bust</h1>
       <div className="text-lg">Time: {time}s | Score: {score}</div>
       <div className="text-sm">
-        Wallet: {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not connected"}
+        {loggedIn && playerId ? `Game ID: ${playerId}` : "Not logged in"}
       </div>
 
       {/* Game Controls */}
@@ -268,10 +253,10 @@ function App() {
           </button>
         )}
         <button
-          onClick={walletAddress ? disconnectWallet : connectWallet}
+          onClick={loggedIn ? logout : login}
           className="bg-blue-600 px-4 py-2 rounded-lg wallet-button"
         >
-          {walletAddress ? "Disconnect" : "Connect Wallet"}
+          {loggedIn ? "Logout" : "Login with Monad Game ID"}
         </button>
       </div>
 
@@ -342,4 +327,5 @@ function App() {
     </div>
   );
 }
-export default App;
+
+export default GameApp;
