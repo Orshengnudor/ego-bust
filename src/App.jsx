@@ -82,11 +82,30 @@ function GameApp() {
     }
   }, [gameStarted]);
 
-  // Connect Metamask
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowMenu(false);
+    };
+
+    if (showMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showMenu]);
+
+  // Connect Metamask with better error handling
   const connectWallet = async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
         setIsConnecting(true);
+        
+        // Check if we need to handle any wallet conflicts
+        if (window.ethereum.providers) {
+          // Multiple wallets detected, use the first one
+          window.ethereum = window.ethereum.providers.find(p => p.isMetaMask);
+        }
+
         const accounts = await window.ethereum.request({
           method: 'eth_requestAccounts',
         });
@@ -129,7 +148,7 @@ function GameApp() {
     try {
       const wmonContract = new ethers.Contract(WMON_ADDRESS, WMON_ABI, web3Provider);
       const balance = await wmonContract.balanceOf(userAddress);
-      setWmonBalance(ethers.formatUnits(balance, 18));
+      setWmonBalance(parseFloat(ethers.formatUnits(balance, 18)).toFixed(4));
     } catch (error) {
       console.error("Error loading WMON balance:", error);
     }
@@ -187,8 +206,12 @@ function GameApp() {
       const signer = await provider.getSigner();
       const rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, signer);
 
+      console.log("Saving score:", score);
       const tx = await rewardContract.addScore(score);
+      console.log("Transaction sent:", tx.hash);
+      
       await tx.wait();
+      console.log("Transaction confirmed");
       
       // Mark score as saved to prevent multiple saves
       setScoreSaved(true);
@@ -197,9 +220,11 @@ function GameApp() {
       await loadPlayerStats(provider, account);
       await loadLeaderboardData(provider);
       
+      alert("Score saved successfully! 🎯");
+      
     } catch (err) {
       console.error("Save score error:", err);
-      alert("Failed to save score. Please try again.");
+      alert("Failed to save score. Please try again. Make sure you're on the correct network.");
     } finally {
       setIsSavingScore(false);
     }
@@ -236,7 +261,7 @@ function GameApp() {
     }
   };
 
-  // Game logic functions
+  // Game logic functions (same as before)
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
@@ -576,12 +601,15 @@ function GameApp() {
         <div className="header-left">
           <button 
             className="menu-btn"
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
           >
             ☰
           </button>
           {showMenu && (
-            <div className="dropdown-menu">
+            <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
               <button 
                 className={`menu-item ${activeTab === 'game' ? 'active' : ''}`}
                 onClick={() => { setActiveTab('game'); setShowMenu(false); }}
