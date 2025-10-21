@@ -31,6 +31,7 @@ html, body, #root {
   color: white;
   font-family: 'Inter', sans-serif;
   width: 100%;
+  position: relative;
 }
 
 /* Header - All in one line - FIXED FOR MOBILE */
@@ -46,12 +47,14 @@ html, body, #root {
   gap: 1rem;
   flex-wrap: nowrap;
   min-height: 70px;
+  z-index: 100;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
 }
 
 .header-center {
@@ -100,10 +103,10 @@ html, body, #root {
   transform: translateY(-1px);
 }
 
-/* Dropdown Menu - FIXED POSITIONING */
+/* Dropdown Menu - FIXED POSITIONING - ABOVE EVERYTHING */
 .dropdown-menu {
   position: fixed;
-  top: 70px; /* Adjust based on your header height */
+  top: 80px; /* Position below header */
   left: 1rem;
   background: #2d1b4e;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -114,7 +117,6 @@ html, body, #root {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
 }
-
 
 .menu-item {
   display: block;
@@ -219,6 +221,18 @@ html, body, #root {
   justify-content: center;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+/* Game Container - Center everything */
+.game-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Game Stats */
@@ -228,9 +242,7 @@ html, body, #root {
   gap: 0.5rem;
   margin-bottom: 1rem;
   width: 100%;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 320px;
 }
 
 .stat {
@@ -331,6 +343,8 @@ html, body, #root {
 /* Game Controls */
 .game-controls {
   margin-top: 1rem;
+  width: 100%;
+  max-width: 320px;
 }
 
 /* Button Styles */
@@ -386,7 +400,7 @@ html, body, #root {
   transform: none;
 }
 
-/* Game Over Screen - FIXED ALIGNMENT */
+/* Game Over Screen - FIXED ALIGNMENT - PERFECTLY CENTERED */
 .game-over-screen {
   background: rgba(255, 255, 255, 0.1);
   padding: 1.5rem;
@@ -396,7 +410,7 @@ html, body, #root {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   width: 95%;
-  max-width: 320px; /* Match game area width */
+  max-width: 320px; /* Match game area width exactly */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   position: relative;
   z-index: 1;
@@ -555,6 +569,7 @@ html, body, #root {
   
   .game-stats {
     gap: 0.25rem;
+    max-width: 300px;
   }
   
   .stat {
@@ -575,6 +590,7 @@ html, body, #root {
   }
   
   .dropdown-menu {
+    top: 70px;
     left: 0.5rem;
     min-width: 160px;
   }
@@ -588,6 +604,14 @@ html, body, #root {
   .game-object {
     width: 32px;
     height: 32px;
+  }
+  
+  .game-over-screen {
+    max-width: 300px;
+  }
+  
+  .game-controls {
+    max-width: 300px;
   }
 }
 
@@ -625,6 +649,18 @@ html, body, #root {
   .menu-btn {
     padding: 0.4rem 0.6rem;
     font-size: 0.9rem;
+  }
+  
+  .game-stats {
+    max-width: 280px;
+  }
+  
+  .game-area {
+    max-width: 280px;
+  }
+  
+  .game-over-screen {
+    max-width: 280px;
   }
 }
 
