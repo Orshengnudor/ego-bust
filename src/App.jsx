@@ -404,7 +404,7 @@ function GameApp() {
                         <th className="text-left py-4 px-4 font-bold text-lg">Player</th>
                         <th className="text-right py-4 px-4 font-bold text-lg">Score</th>
                         <th className="text-right py-4 px-4 font-bold text-lg">Games</th>
-                        <th className="text-right py-4 px-4 font-bold text-lg">WMON Earned</th>
+                        <th className="text-right py-4 px-4 font-bold text-lg">Reward</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -476,7 +476,7 @@ function GameApp() {
 
       default: // 'game'
         return (
-          <div className="w-full max-w-md mx-auto">
+          <div className="game-container">
             {/* Game Stats */}
             <div className="game-stats mb-4">
               <div className="stat">
