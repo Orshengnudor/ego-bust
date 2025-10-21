@@ -102,18 +102,19 @@ html, body, #root {
 
 /* Dropdown Menu - FIXED POSITIONING */
 .dropdown-menu {
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: 70px; /* Adjust based on your header height */
   left: 1rem;
   background: #2d1b4e;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   padding: 0.5rem;
-  z-index: 1000;
+  z-index: 9999; /* Very high z-index to appear above everything */
   min-width: 180px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
 }
+
 
 .menu-item {
   display: block;
@@ -385,19 +386,20 @@ html, body, #root {
   transform: none;
 }
 
-/* Game Over Screen */
+/* Game Over Screen - FIXED ALIGNMENT */
 .game-over-screen {
   background: rgba(255, 255, 255, 0.1);
   padding: 1.5rem;
   border-radius: 16px;
   text-align: center;
-  margin-top: 1.5rem;
+  margin: 1.5rem auto 0 auto;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  width: 100%;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 95%;
+  max-width: 320px; /* Match game area width */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1;
 }
 
 .game-over-screen h2 {
