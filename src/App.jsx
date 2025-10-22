@@ -40,13 +40,13 @@ const config = createConfig({
     metaMask(),
   ],
   transports: {
-    [monadTestnet.id]: http('https://monad-testnet.g.alchemy.com/v2/b5Q7A1uPLthyIDS1OsWo9'),
+    [monadTestnet.id]: http(),
   },
 });
 
 const queryClient = new QueryClient();
 
-// Fixed ABI definitions - proper format for Viem
+// Fixed ABI definitions
 const WMON_ABI = [
   {
     name: 'balanceOf',
@@ -119,64 +119,38 @@ const REWARD_ABI = [
     stateMutability: 'view',
     inputs: [{ name: 'player', type: 'address' }],
     outputs: [{ type: 'uint256' }]
-  },
-  {
-    type: 'event',
-    name: 'RewardsClaimed',
-    inputs: [
-      { name: 'player', type: 'address', indexed: true },
-      { name: 'score', type: 'uint256', indexed: false },
-      { name: 'amount', type: 'uint256', indexed: false }
-    ]
-  },
-  {
-    type: 'event',
-    name: 'ScoreAdded',
-    inputs: [
-      { name: 'player', type: 'address', indexed: true },
-      { name: 'score', type: 'uint256', indexed: false },
-      { name: 'gamesPlayed', type: 'uint256', indexed: false }
-    ]
   }
 ];
 
-// Update these with your Monad testnet contract addresses
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+// Contract addresses
 const WMON_ADDRESS = import.meta.env.VITE_WMON_ADDRESS || "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701";
 const REWARD_CONTRACT_ADDRESS = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS || "0xa2B98D710AB9c0BC5aA4d21552B343A297C83dFF";
 
-// Alchemy RPC URL for Monad Testnet - FIXED CONFIGURATION
+// Alchemy RPC URL for Monad Testnet
 const ALCHEMY_RPC_URL = "https://monad-testnet.g.alchemy.com/v2/b5Q7A1uPLthyIDS1OsWo9";
 
-// HIGHER Gas speed options for faster transactions
+// Proper Monad Gas speed options - Standard gwei range
 const GAS_SPEED_OPTIONS = {
-  slow: {
+  standard: {
     name: "🐢 Standard",
-    maxFeePerGas: parseEther("0.000002"), // 2000 gwei
-    maxPriorityFeePerGas: parseEther("0.000002"), // 2000 gwei
-    description: "Standard speed, lower cost",
-    estimatedTime: "15-30 sec"
+    maxFeePerGas: parseEther("0.000000009"), // 9 gwei
+    maxPriorityFeePerGas: parseEther("0.000000009"), // 9 gwei
+    description: "Lowest cost, slower confirmation",
+    estimatedTime: "30-60 sec"
   },
-  medium: {
-    name: "⚡ Fast", 
-    maxFeePerGas: parseEther("0.000005"), // 5000 gwei
-    maxPriorityFeePerGas: parseEther("0.000005"), // 5000 gwei
-    description: "Faster confirmation",
+  low: {
+    name: "⚡ Low", 
+    maxFeePerGas: parseEther("0.00000001"), // 10 gwei
+    maxPriorityFeePerGas: parseEther("0.00000001"), // 10 gwei
+    description: "Balanced speed and cost",
+    estimatedTime: "20-40 sec"
+  },
+  high: {
+    name: "🚀 High",
+    maxFeePerGas: parseEther("0.0000001"), // 100 gwei
+    maxPriorityFeePerGas: parseEther("0.0000001"), // 100 gwei
+    description: "Faster confirmation", 
     estimatedTime: "10-20 sec"
-  },
-  fast: {
-    name: "🚀 Turbo",
-    maxFeePerGas: parseEther("0.000008"), // 8000 gwei
-    maxPriorityFeePerGas: parseEther("0.000008"), // 8000 gwei
-    description: "Very fast confirmation", 
-    estimatedTime: "5-15 sec"
-  },
-  aggressive: {
-    name: "🔥 Instant",
-    maxFeePerGas: parseEther("0.00001"), // 10000 gwei
-    maxPriorityFeePerGas: parseEther("0.00001"), // 10000 gwei
-    description: "Fastest possible confirmation",
-    estimatedTime: "3-10 sec"
   }
 };
 
@@ -197,20 +171,22 @@ function GameApp() {
   const [scoreSaved, setScoreSaved] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [showGasOptions, setShowGasOptions] = useState(false);
-  const [selectedGasSpeed, setSelectedGasSpeed] = useState('medium'); // Default to medium
+  const [selectedGasSpeed, setSelectedGasSpeed] = useState('low');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
   const [transferTo, setTransferTo] = useState('');
-  const [transferType, setTransferType] = useState('MON'); // MON or WMON
-  const [transferDirection, setTransferDirection] = useState('toSmart'); // toSmart or toMain
+  const [transferType, setTransferType] = useState('MON');
+  const [transferDirection, setTransferDirection] = useState('toSmart');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [customGasPrice, setCustomGasPrice] = useState('');
+  const [showCustomGas, setShowCustomGas] = useState(false);
   
-  // Web3 States with Smart Account
+  // Web3 States
   const [smartAccount, setSmartAccount] = useState(null);
   const [smartAccountAddress, setSmartAccountAddress] = useState(null);
   const [bundlerClient, setBundlerClient] = useState(null);
   const [wmonBalance, setWmonBalance] = useState("0");
-  const [monBalance, setMonBalance] = useState("0"); // MON balance for gas
+  const [monBalance, setMonBalance] = useState("0");
   const [mainAccountMonBalance, setMainAccountMonBalance] = useState("0");
   const [mainAccountWmonBalance, setMainAccountWmonBalance] = useState("0");
   const [pendingRewards, setPendingRewards] = useState(0);
@@ -244,6 +220,23 @@ function GameApp() {
   const IMAGE_SIZE = 35;
   const BORDER_WIDTH = 3;
 
+  // Get current gas options (selected preset or custom)
+  const getCurrentGasOptions = () => {
+    if (showCustomGas && customGasPrice) {
+      const customGwei = parseFloat(customGasPrice);
+      if (!isNaN(customGwei) && customGwei > 0) {
+        return {
+          name: `🎛️ Custom (${customGwei} gwei)`,
+          maxFeePerGas: parseEther((customGwei / 1e9).toFixed(9)),
+          maxPriorityFeePerGas: parseEther((customGwei / 1e9).toFixed(9)),
+          description: "Custom gas price",
+          estimatedTime: "Varies"
+        };
+      }
+    }
+    return GAS_SPEED_OPTIONS[selectedGasSpeed];
+  };
+
   // Copy address to clipboard
   const copyAddress = async () => {
     const addressToCopy = smartAccountAddress || address;
@@ -258,19 +251,18 @@ function GameApp() {
     }
   };
 
-  // Format address for display - SHORTER for mobile
+  // Format address for display
   const formatAddress = (addr) => {
     if (!addr) return '';
     return `${addr.slice(0, 4)}...${addr.slice(-3)}`;
   };
 
-  // Format address for tooltip (full address)
   const formatFullAddress = (addr) => {
     if (!addr) return '';
     return addr;
   };
 
-  // Initialize Smart Account when wallet connects
+  // Initialize Smart Account
   useEffect(() => {
     const initializeSmartAccount = async () => {
       if (!isConnected || !publicClient || !walletClient) return;
@@ -278,13 +270,13 @@ function GameApp() {
       try {
         setIsConnecting(true);
         
-        console.log("Initializing Smart Account with Alchemy RPC...");
+        console.log("🔄 Initializing Smart Account for Monad...");
         
-        // Create bundler client using Alchemy's RPC service on Monad Testnet
+        // Create bundler client
         const bundler = createBundlerClient({
           transport: http(ALCHEMY_RPC_URL, {
-            timeout: 30000,
-            retryCount: 3,
+            timeout: 60000,
+            retryCount: 5,
           }),
         });
 
@@ -307,17 +299,17 @@ function GameApp() {
         setSmartAccount(smartAcc);
         setSmartAccountAddress(smartAcc.address);
         
-        console.log("Smart Account created:", smartAcc.address);
+        console.log("✅ Smart Account created:", smartAcc.address);
         
         // Load balances and data
         await loadAllBalances(userAddress, smartAcc.address);
         await loadPlayerStats(smartAcc.address);
         await loadLeaderboardData();
         
-        console.log("Smart Account fully initialized");
+        console.log("🎉 Smart Account fully initialized");
         
       } catch (error) {
-        console.error("Smart account initialization error:", error);
+        console.error("❌ Smart account initialization error:", error);
       } finally {
         setIsConnecting(false);
       }
@@ -353,26 +345,7 @@ function GameApp() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Check pending transactions
-  useEffect(() => {
-    if (pendingTxHash && bundlerClient) {
-      const interval = setInterval(async () => {
-        const receipt = await checkTransactionStatus(pendingTxHash);
-        if (receipt) {
-          setPendingTxHash(null);
-          setScoreSaved(true);
-          await loadAllBalances(address, smartAccountAddress);
-          await loadPlayerStats(smartAccountAddress);
-          await loadLeaderboardData();
-          alert("🎉 Transaction confirmed! Score saved successfully.");
-        }
-      }, 10000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [pendingTxHash, bundlerClient]);
-
-  // Connect with MetaMask Smart Account
+  // Connect with MetaMask
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
@@ -406,23 +379,7 @@ function GameApp() {
     setPendingTxHash(null);
   };
 
-  // Check transaction status
-  const checkTransactionStatus = async (userOpHash) => {
-    if (!bundlerClient) return null;
-    
-    try {
-      const { receipt } = await bundlerClient.waitForUserOperationReceipt({
-        hash: userOpHash,
-        timeout: 5000, // Quick check
-      });
-      return receipt;
-    } catch (error) {
-      console.log("Transaction still pending:", error.message);
-      return null;
-    }
-  };
-
-  // Load all balances (both main account and smart account)
+  // Load all balances
   const loadAllBalances = async (mainAddress, smartAddress) => {
     if (!publicClient) return;
     
@@ -529,17 +486,16 @@ function GameApp() {
     }
   };
 
-  // Calculate required gas amount with buffer
+  // Calculate required gas amount for Monad
   const calculateRequiredGas = (gasOptions) => {
-    // Higher buffer for Smart Accounts - they need more gas
-    const gasBuffer = 1.5; // 50% buffer for Smart Account overhead
-    const baseGasCost = parseFloat(gasOptions.maxFeePerGas.toString() / 1e18) * 500000;
+    const gasBuffer = 1.2;
+    const baseGasCost = parseFloat(gasOptions.maxFeePerGas.toString() / 1e18) * 200000;
     return baseGasCost * gasBuffer;
   };
 
   // Transfer funds between accounts
   const transferFunds = async () => {
-    if (!transferAmount || !transferTo || !smartAccount || !walletClient) return;
+    if (!transferAmount || !transferTo || !smartAccount) return;
     
     try {
       setIsTransferring(true);
@@ -550,40 +506,38 @@ function GameApp() {
         return;
       }
 
-      // Validate address
       if (!transferTo.match(/^0x[a-fA-F0-9]{40}$/)) {
         alert("Please enter a valid Ethereum address");
         return;
       }
 
+      const gasOptions = getCurrentGasOptions();
+
       if (transferDirection === 'toSmart') {
         // Transfer FROM main wallet TO smart account
         if (transferType === 'MON') {
-          // Transfer MON (native token) from main to smart account
           const currentBalance = parseFloat(mainAccountMonBalance);
           if (amount > currentBalance) {
             alert(`Insufficient MON balance. Available: ${currentBalance} MON`);
             return;
           }
 
-          // Use regular wallet transaction (not smart account) since we're sending FROM main wallet
           const hash = await walletClient.sendTransaction({
             to: transferTo,
             value: parseEther(transferAmount),
           });
 
           console.log("MON transfer transaction hash:", hash);
+          setPendingTxHash(hash);
           alert(`✅ Successfully sent ${amount} MON to Smart Account`);
 
         } else if (transferType === 'WMON') {
-          // Transfer WMON (ERC-20 token) from main to smart account
           const currentBalance = parseFloat(mainAccountWmonBalance);
           if (amount > currentBalance) {
             alert(`Insufficient WMON balance. Available: ${currentBalance} WMON`);
             return;
           }
 
-          // Use regular wallet transaction for ERC-20 transfer
           const hash = await walletClient.sendTransaction({
             to: WMON_ADDRESS,
             data: encodeFunctionData({
@@ -594,18 +548,32 @@ function GameApp() {
           });
 
           console.log("WMON transfer transaction hash:", hash);
+          setPendingTxHash(hash);
           alert(`✅ Successfully sent ${amount} WMON to Smart Account`);
         }
 
       } else if (transferDirection === 'toMain') {
-        // Transfer FROM smart account TO main wallet
+        // Transfer FROM smart account TO main wallet using smart account
+        if (!bundlerClient) {
+          alert("Smart Account service not available. Please try again.");
+          return;
+        }
+
         if (transferType === 'MON') {
-          // Transfer MON (native token) from smart account to main
           const currentBalance = parseFloat(monBalance);
           if (amount > currentBalance) {
             alert(`Insufficient MON balance. Available: ${currentBalance} MON`);
             return;
           }
+
+          const requiredGas = calculateRequiredGas(gasOptions);
+
+          if (parseFloat(monBalance) < requiredGas) {
+            alert(`Your Smart Account needs MON for gas! Current: ${monBalance} MON, Required: ~${requiredGas.toFixed(6)} MON`);
+            return;
+          }
+
+          console.log(`🔄 Sending MON via Smart Account with ${gasOptions.name}`);
 
           const userOperationHash = await bundlerClient.sendUserOperation({
             account: smartAccount,
@@ -616,24 +584,36 @@ function GameApp() {
                 data: '0x',
               },
             ],
-            maxFeePerGas: GAS_SPEED_OPTIONS.medium.maxFeePerGas,
-            maxPriorityFeePerGas: GAS_SPEED_OPTIONS.medium.maxPriorityFeePerGas,
+            maxFeePerGas: gasOptions.maxFeePerGas,
+            maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
           });
+
+          console.log("Smart Account MON transfer hash:", userOperationHash);
+          setPendingTxHash(userOperationHash);
 
           const { receipt } = await bundlerClient.waitForUserOperationReceipt({
             hash: userOperationHash,
-            timeout: 30000,
+            timeout: 120000,
           });
 
+          console.log("Transaction confirmed:", receipt.transactionHash);
           alert(`✅ Successfully transferred ${amount} MON to Main Wallet`);
           
         } else if (transferType === 'WMON') {
-          // Transfer WMON (ERC-20 token) from smart account to main
           const currentBalance = parseFloat(wmonBalance);
           if (amount > currentBalance) {
             alert(`Insufficient WMON balance. Available: ${currentBalance} WMON`);
             return;
           }
+
+          const requiredGas = calculateRequiredGas(gasOptions);
+
+          if (parseFloat(monBalance) < requiredGas) {
+            alert(`Your Smart Account needs MON for gas! Current: ${monBalance} MON, Required: ~${requiredGas.toFixed(6)} MON`);
+            return;
+          }
+
+          console.log(`🔄 Sending WMON via Smart Account with ${gasOptions.name}`);
 
           const userOperationHash = await bundlerClient.sendUserOperation({
             account: smartAccount,
@@ -647,15 +627,19 @@ function GameApp() {
                 }),
               },
             ],
-            maxFeePerGas: GAS_SPEED_OPTIONS.medium.maxFeePerGas,
-            maxPriorityFeePerGas: GAS_SPEED_OPTIONS.medium.maxPriorityFeePerGas,
+            maxFeePerGas: gasOptions.maxFeePerGas,
+            maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
           });
+
+          console.log("Smart Account WMON transfer hash:", userOperationHash);
+          setPendingTxHash(userOperationHash);
 
           const { receipt } = await bundlerClient.waitForUserOperationReceipt({
             hash: userOperationHash,
-            timeout: 30000,
+            timeout: 120000,
           });
 
+          console.log("Transaction confirmed:", receipt.transactionHash);
           alert(`✅ Successfully transferred ${amount} WMON to Main Wallet`);
         }
       }
@@ -664,11 +648,18 @@ function GameApp() {
       setTransferAmount('');
       setTransferTo('');
       setShowTransferModal(false);
-      await loadAllBalances(address, smartAccountAddress);
+      setTimeout(() => loadAllBalances(address, smartAccountAddress), 3000);
       
     } catch (error) {
       console.error("Transfer error:", error);
-      alert("Transfer failed. Please check the console for details.");
+      
+      if (error.message?.includes("timeout") || error.message?.includes("Timed out")) {
+        alert("Transaction is taking longer than expected. It may still be processing. Please check the explorer later.");
+      } else if (error.message?.includes("insufficient funds")) {
+        alert("Your Smart Account doesn't have enough MON for gas. Please fund it first.");
+      } else {
+        alert(`Transfer failed: ${error.message}`);
+      }
     } finally {
       setIsTransferring(false);
     }
@@ -686,8 +677,7 @@ function GameApp() {
     setTransferTo(smartAccountAddress);
     
     if (type === 'MON') {
-      // Leave 0.1 MON for gas in main wallet
-      const available = Math.max(0, parseFloat(mainAccountMonBalance) - 0.1);
+      const available = Math.max(0, parseFloat(mainAccountMonBalance) - 0.01);
       if (available > 0) {
         setTransferAmount(available.toFixed(6));
       } else {
@@ -711,8 +701,7 @@ function GameApp() {
     setTransferTo(address);
     
     if (type === 'MON') {
-      // Leave 0.1 MON for gas in smart account
-      const available = Math.max(0, parseFloat(monBalance) - 0.1);
+      const available = Math.max(0, parseFloat(monBalance) - 0.01);
       if (available > 0) {
         setTransferAmount(available.toFixed(6));
       } else {
@@ -725,103 +714,85 @@ function GameApp() {
     setShowTransferModal(true);
   };
 
-  // AUTO-APPROVE SMART ACCOUNT TRANSACTIONS
+  // Save score using Smart Account
   const saveScoreAndAccumulate = async () => {
     if (!smartAccount || scoreSaved) return;
     
     try {
       setIsSavingScore(true);
+      console.log("🔄 Saving score via Smart Account...");
 
-      console.log("🔄 Starting auto-approve smart account transaction...");
-      
       if (!bundlerClient) {
-        alert("Bundler service not available. Please try again.");
+        alert("Smart Account service not available. Please try again.");
         return;
       }
 
-      const gasOptions = GAS_SPEED_OPTIONS[selectedGasSpeed];
+      const gasOptions = getCurrentGasOptions();
       const requiredGas = calculateRequiredGas(gasOptions);
-      
-      console.log("Required gas:", requiredGas, "MON");
-      console.log("Current MON balance:", monBalance, "MON");
 
       // Check if Smart Account has enough MON for gas
       if (parseFloat(monBalance) < requiredGas) {
-        alert(`Your Smart Account needs more MON tokens for gas! 
-Current: ${monBalance} MON
-Required: ${requiredGas.toFixed(6)} MON
-Please send at least ${requiredGas.toFixed(6)} MON to your Smart Account:
-${smartAccountAddress}`);
-        return;
-      }
-
-      console.log(`⚡ Using gas speed: ${gasOptions.name} (${gasOptions.maxFeePerGas.toString() / 1e9} gwei)`);
-
-      // AUTO-APPROVE: No retry logic needed since Smart Account auto-approves
-      try {
-        console.log("🤖 Smart Account auto-approving transaction...");
-        
-        const userOperationHash = await bundlerClient.sendUserOperation({
-          account: smartAccount,
-          calls: [
-            {
-              to: REWARD_CONTRACT_ADDRESS,
-              data: encodeFunctionData({
-                abi: REWARD_ABI,
-                functionName: 'addScore',
-                args: [score],
-              }),
-            },
-          ],
-          maxFeePerGas: gasOptions.maxFeePerGas,
-          maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
-        });
-
-        console.log("✅ User operation sent (auto-approved):", userOperationHash);
-        setPendingTxHash(userOperationHash);
-        
-        // Wait for confirmation
-        const { receipt } = await bundlerClient.waitForUserOperationReceipt({
-          hash: userOperationHash,
-          timeout: 45000, // Longer timeout for confirmation
-        });
-        
-        console.log("🎉 Transaction confirmed:", receipt.transactionHash);
-        
-        setScoreSaved(true);
-        setPendingTxHash(null);
-        
-        await loadAllBalances(address, smartAccountAddress);
-        await loadPlayerStats(smartAccountAddress);
-        await loadLeaderboardData();
-        
-        alert(`🎉 Score saved successfully with ${gasOptions.name} speed! Your WMON rewards have been accumulated.`);
-        
-      } catch (err) {
-        console.error("Smart Account transaction error:", err);
-        
-        if (err.message?.includes("timeout") || err.message?.includes("Timed out")) {
-          alert(`Transaction is taking longer than expected. It may still be processing. Please check the transaction status later.`);
-        } else if (err.message?.includes("insufficient funds") || err.message?.includes("precheck failed")) {
-          const requiredGas = calculateRequiredGas(GAS_SPEED_OPTIONS[selectedGasSpeed]);
-          alert(`Your Smart Account needs more MON tokens for gas! 
+        alert(`Your Smart Account needs MON for gas! 
 Current: ${monBalance} MON
 Required: ~${requiredGas.toFixed(6)} MON
 Please send MON to: ${smartAccountAddress}`);
-        } else {
-          alert("Smart Account transaction failed. Please try again.");
-        }
-        throw err;
+        return;
       }
+
+      console.log(`💾 Saving score with ${gasOptions.name}`);
+
+      const userOperationHash = await bundlerClient.sendUserOperation({
+        account: smartAccount,
+        calls: [
+          {
+            to: REWARD_CONTRACT_ADDRESS,
+            data: encodeFunctionData({
+              abi: REWARD_ABI,
+              functionName: 'addScore',
+              args: [score],
+            }),
+          },
+        ],
+        maxFeePerGas: gasOptions.maxFeePerGas,
+        maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
+      });
+
+      console.log("Score save user operation hash:", userOperationHash);
+      setPendingTxHash(userOperationHash);
       
-    } catch (err) {
-      console.error("Save score error:", err);
+      // Wait for confirmation
+      const { receipt } = await bundlerClient.waitForUserOperationReceipt({
+        hash: userOperationHash,
+        timeout: 120000,
+      });
+      
+      console.log("🎉 Transaction confirmed:", receipt.transactionHash);
+      
+      setScoreSaved(true);
+      setPendingTxHash(null);
+      
+      await loadAllBalances(address, smartAccountAddress);
+      await loadPlayerStats(smartAccountAddress);
+      await loadLeaderboardData();
+      
+      alert(`🎉 Score saved successfully with ${gasOptions.name}!`);
+      
+    } catch (error) {
+      console.error("Save score error:", error);
+      
+      if (error.message?.includes("timeout") || error.message?.includes("Timed out")) {
+        alert("Transaction is taking longer than expected. It may still be processing.");
+      } else if (error.message?.includes("insufficient funds")) {
+        alert("Your Smart Account needs MON for gas. Please fund it first.");
+      } else {
+        alert("Failed to save score. Please try again.");
+      }
     } finally {
       setIsSavingScore(false);
     }
   };
 
-  // AUTO-APPROVE CLAIM REWARDS
+  // Claim rewards using Smart Account
   const claimRewards = async () => {
     if (!smartAccount) return;
 
@@ -834,24 +805,19 @@ Please send MON to: ${smartAccountAddress}`);
       setIsClaiming(true);
       
       if (!bundlerClient) {
-        alert("Bundler service not available. Cannot claim rewards with Smart Account.");
+        alert("Smart Account service not available. Cannot claim rewards.");
         return;
       }
 
-      const gasOptions = GAS_SPEED_OPTIONS[selectedGasSpeed];
+      const gasOptions = getCurrentGasOptions();
       const requiredGas = calculateRequiredGas(gasOptions);
 
-      // Check if Smart Account has enough MON for gas
       if (parseFloat(monBalance) < requiredGas) {
-        alert(`Your Smart Account needs more MON tokens for gas! 
-Current: ${monBalance} MON
-Required: ${requiredGas.toFixed(6)} MON
-Please send at least ${requiredGas.toFixed(6)} MON to your Smart Account:
-${smartAccountAddress}`);
+        alert(`Your Smart Account needs MON for gas! Current: ${monBalance} MON, Required: ~${requiredGas.toFixed(6)} MON`);
         return;
       }
       
-      console.log(`🤖 Smart Account auto-approving claim transaction...`);
+      console.log(`🎁 Claiming rewards with ${gasOptions.name}`);
 
       const userOperationHash = await bundlerClient.sendUserOperation({
         account: smartAccount,
@@ -871,10 +837,10 @@ ${smartAccountAddress}`);
 
       const { receipt } = await bundlerClient.waitForUserOperationReceipt({
         hash: userOperationHash,
-        timeout: 45000,
+        timeout: 120000,
       });
       
-      alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON with ${gasOptions.name} speed!`);
+      alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON!`);
       
       await loadAllBalances(address, smartAccountAddress);
       await loadPlayerStats(smartAccountAddress);
@@ -882,12 +848,8 @@ ${smartAccountAddress}`);
       
     } catch (error) {
       console.error("Error claiming rewards:", error);
-      if (error.message?.includes("insufficient funds") || error.message?.includes("precheck failed")) {
-        const requiredGas = calculateRequiredGas(GAS_SPEED_OPTIONS[selectedGasSpeed]);
-        alert(`Your Smart Account needs more MON tokens for gas! 
-Current: ${monBalance} MON
-Required: ~${requiredGas.toFixed(6)} MON
-Please send MON to: ${smartAccountAddress}`);
+      if (error.message?.includes("insufficient funds")) {
+        alert("Your Smart Account needs MON for gas. Please fund it first.");
       } else {
         alert("Failed to claim rewards. Please try again.");
       }
@@ -1117,39 +1079,83 @@ Please send MON to: ${smartAccountAddress}`);
   const renderGasSpeedSelector = () => {
     if (!showGasOptions) return null;
 
+    const currentGasOptions = getCurrentGasOptions();
+
     return (
       <div className="gas-options-overlay" onClick={(e) => e.stopPropagation()}>
         <div className="gas-options-modal">
           <h3>⚡ Select Gas Speed</h3>
           <p className="gas-options-description">Choose transaction speed and cost</p>
           
-          <div className="gas-options-list">
-            {Object.entries(GAS_SPEED_OPTIONS).map(([key, option]) => (
-              <div 
-                key={key}
-                className={`gas-option ${selectedGasSpeed === key ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedGasSpeed(key);
-                  setShowGasOptions(false);
-                }}
-              >
-                <div className="gas-option-header">
-                  <span className="gas-option-name">{option.name}</span>
-                  <span className="gas-option-time">{option.estimatedTime}</span>
-                </div>
-                <div className="gas-option-details">
-                  <span className="gas-price">{(option.maxFeePerGas.toString() / 1e9).toFixed(0)} gwei</span>
-                  <span className="gas-description">{option.description}</span>
-                </div>
+          {/* Custom Gas Input */}
+          <div className="custom-gas-section">
+            <div className="form-group">
+              <label>🎛️ Custom Gas Price (gwei)</label>
+              <input
+                type="number"
+                value={customGasPrice}
+                onChange={(e) => setCustomGasPrice(e.target.value)}
+                placeholder="Enter custom gwei (e.g., 15)"
+                className="custom-gas-input"
+                min="1"
+                max="1000"
+              />
+              <div className="custom-gas-actions">
+                <button 
+                  onClick={() => setShowCustomGas(!showCustomGas)}
+                  className={`custom-gas-toggle ${showCustomGas ? 'active' : ''}`}
+                >
+                  {showCustomGas ? '✅ Using Custom' : '🎛️ Use Custom'}
+                </button>
+                {showCustomGas && customGasPrice && (
+                  <span className="custom-gas-preview">
+                    Custom: {customGasPrice} gwei
+                  </span>
+                )}
               </div>
-            ))}
+            </div>
+          </div>
+
+          <div className="gas-presets-section">
+            <h4>Preset Options:</h4>
+            <div className="gas-options-list">
+              {Object.entries(GAS_SPEED_OPTIONS).map(([key, option]) => (
+                <div 
+                  key={key}
+                  className={`gas-option ${selectedGasSpeed === key && !showCustomGas ? 'selected' : ''}`}
+                  onClick={() => {
+                    setSelectedGasSpeed(key);
+                    setShowCustomGas(false);
+                    setShowGasOptions(false);
+                  }}
+                >
+                  <div className="gas-option-header">
+                    <span className="gas-option-name">{option.name}</span>
+                    <span className="gas-option-time">{option.estimatedTime}</span>
+                  </div>
+                  <div className="gas-option-details">
+                    <span className="gas-price">{(option.maxFeePerGas.toString() / 1e9 * 1e9).toFixed(0)} gwei</span>
+                    <span className="gas-description">{option.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Current Selection Display */}
+          <div className="current-gas-selection">
+            <h4>Current Selection:</h4>
+            <div className="current-gas-info">
+              <span className="gas-name">{currentGasOptions.name}</span>
+              <span className="gas-price">({(currentGasOptions.maxFeePerGas.toString() / 1e9 * 1e9).toFixed(0)} gwei)</span>
+            </div>
           </div>
           
           <button 
             className="close-gas-options"
             onClick={() => setShowGasOptions(false)}
           >
-            Close
+            Apply Selection
           </button>
         </div>
       </div>
@@ -1158,6 +1164,8 @@ Please send MON to: ${smartAccountAddress}`);
 
   // Render different content based on active tab
   const renderContent = () => {
+    const currentGasOptions = getCurrentGasOptions();
+
     switch (activeTab) {
       case 'leaderboard':
         return (
@@ -1241,7 +1249,7 @@ Please send MON to: ${smartAccountAddress}`);
                       setShowGasOptions(!showGasOptions);
                     }}
                   >
-                    ⚡ Gas: {GAS_SPEED_OPTIONS[selectedGasSpeed].name}
+                    ⚡ Gas: {currentGasOptions.name}
                   </button>
                 </div>
                 <button 
@@ -1349,10 +1357,10 @@ Please send MON to: ${smartAccountAddress}`);
                       setShowGasOptions(!showGasOptions);
                     }}
                   >
-                    ⚡ Gas: {GAS_SPEED_OPTIONS[selectedGasSpeed].name}
+                    ⚡ Gas: {currentGasOptions.name}
                   </button>
                   <p className="text-xs opacity-70 mt-1">
-                    Estimated: {GAS_SPEED_OPTIONS[selectedGasSpeed].estimatedTime}
+                    Estimated: {currentGasOptions.estimatedTime}
                   </p>
                 </div>
                 
@@ -1362,7 +1370,7 @@ Please send MON to: ${smartAccountAddress}`);
                     disabled={isSavingScore}
                     className="save-btn"
                   >
-                    {isSavingScore ? "⏳ Auto-Approving..." : "🤖 Save Score (Auto-Approve)"}
+                    {isSavingScore ? "⏳ Saving..." : "💾 Save Score"}
                   </button>
                   <button onClick={startGame} className="play-again-btn">
                     🔄 Play Again
@@ -1372,8 +1380,7 @@ Please send MON to: ${smartAccountAddress}`);
                   <div className="mt-4 p-3 bg-blue-800 rounded-lg">
                     <p className="text-sm">⏳ Transaction submitted: {pendingTxHash.slice(0, 10)}...</p>
                     <p className="text-xs opacity-80">
-                      Using {GAS_SPEED_OPTIONS[selectedGasSpeed].name} - 
-                      Estimated: {GAS_SPEED_OPTIONS[selectedGasSpeed].estimatedTime}
+                      Using {currentGasOptions.name}
                     </p>
                     <button 
                       onClick={() => window.open(`https://testnet.monadexplorer.com/tx/${pendingTxHash}`, '_blank')}
@@ -1462,7 +1469,7 @@ Please send MON to: ${smartAccountAddress}`);
                   <div className="transfer-buttons-horizontal">
                     <button 
                       onClick={() => quickTransferToSmart('MON')}
-                      disabled={parseFloat(mainAccountMonBalance) <= 0.1}
+                      disabled={parseFloat(mainAccountMonBalance) <= 0.01}
                       className="transfer-btn-small to-smart"
                       title="Send MON to Smart Account"
                     >
@@ -1502,7 +1509,7 @@ Please send MON to: ${smartAccountAddress}`);
                   <div className="transfer-buttons-horizontal">
                     <button 
                       onClick={() => quickTransferToMain('MON')}
-                      disabled={parseFloat(monBalance) <= 0.1}
+                      disabled={parseFloat(monBalance) <= 0.01}
                       className="transfer-btn-small to-main"
                       title="Withdraw MON to Main Wallet"
                     >
@@ -1541,7 +1548,7 @@ Please send MON to: ${smartAccountAddress}`);
                   setShowMenu(false);
                 }}
               >
-                ⚡ Gas: {GAS_SPEED_OPTIONS[selectedGasSpeed].name}
+                ⚡ Gas: {getCurrentGasOptions().name}
               </button>
             </div>
           )}
@@ -1549,8 +1556,8 @@ Please send MON to: ${smartAccountAddress}`);
 
         <div className="header-center">
           <h1>🎯 Ego Bust</h1>
-          {smartAccount && (
-            <span className="smart-account-badge">⚡ Auto-Approve</span>
+          {smartAccountAddress && (
+            <span className="smart-account-badge">⚡ Smart Account</span>
           )}
         </div>
 
@@ -1606,15 +1613,15 @@ Please send MON to: ${smartAccountAddress}`);
       </main>
 
       <footer className="game-footer">
-        <p>⚡ Powered by MetaMask Smart Accounts | Monad Testnet | 0.01 WMON per point | Min 1 WMON to claim</p>
-        {smartAccount && (
+        <p>⚡ Powered by Smart Accounts | Monad Testnet | 0.01 WMON per point | Min 1 WMON to claim</p>
+        {smartAccountAddress && (
           <p style={{color: '#fbbf24', fontSize: '0.7rem', marginTop: '0.5rem'}}>
             Smart Account: {smartAccountAddress} - Send MON to this address for gas
           </p>
         )}
         {bundlerClient && (
           <p style={{color: '#10B981', fontSize: '0.7rem', marginTop: '0.5rem'}}>
-            ✅ Current gas speed: {GAS_SPEED_OPTIONS[selectedGasSpeed].name} ({(GAS_SPEED_OPTIONS[selectedGasSpeed].maxFeePerGas.toString() / 1e9).toFixed(0)} gwei)
+            ✅ Current gas: {getCurrentGasOptions().name} ({(getCurrentGasOptions().maxFeePerGas.toString() / 1e9 * 1e9).toFixed(0)} gwei)
           </p>
         )}
       </footer>
