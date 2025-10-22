@@ -1273,3 +1273,146 @@ body {
     opacity: 1 !important;
   }
 }
+/* Add these new styles to your existing app.css */
+
+/* Transfer Direction Styles */
+.transfer-direction {
+  text-align: center;
+  color: #fbbf24;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.direction-select {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.direction-select:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* Horizontal Transfer Buttons */
+.transfer-buttons-horizontal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.transfer-btn-small.to-smart {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.transfer-btn-small.to-main {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.transfer-btn-small.to-smart:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.transfer-btn-small.to-main:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+/* Custom Transfer Section */
+.custom-transfer-section {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* Auto-Approve Button Styles */
+.save-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.save-btn:before {
+  content: "🤖";
+  margin-right: 0.5rem;
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+
+/* Auto-Approve Badge */
+.smart-account-badge {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  display: inline-block;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(124, 58, 237, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.8);
+  }
+}
+
+/* Enhanced balance groups with transfer buttons */
+.balance-group {
+  position: relative;
+}
+
+.balance-group:after {
+  content: "";
+  position: absolute;
+  bottom: -0.5rem;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+}
+
+/* Mobile responsive adjustments for new buttons */
+@media (max-width: 768px) {
+  .transfer-buttons-horizontal {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  
+  .transfer-btn-small {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.5rem;
+  }
+  
+  .direction-select {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .transfer-buttons-horizontal {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .transfer-btn-small {
+    font-size: 0.65rem;
+    padding: 0.35rem 0.4rem;
+  }
+}
