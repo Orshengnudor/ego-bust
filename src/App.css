@@ -1,4 +1,4 @@
-/* Enhanced CSS for Ego Bust Pro - Final Alignment Fix */
+/* Enhanced CSS for Ego Bust Pro - Professional Balance Management */
 /* Root page styling */
 html, body, #root {
   background: linear-gradient(135deg, #1a0330 0%, #290542 100%);
@@ -34,7 +34,7 @@ html, body, #root {
   position: relative;
 }
 
-/* Header - All in one line - FIXED FOR MOBILE */
+/* Header - Clean and Professional */
 .game-header {
   display: flex;
   justify-content: space-between;
@@ -108,19 +108,21 @@ html, body, #root {
   transform: translateY(-1px);
 }
 
-/* Dropdown Menu - FIXED POSITIONING - ABOVE EVERYTHING */
+/* Enhanced Dropdown Menu with Balances */
 .dropdown-menu {
   position: fixed;
-  top: 80px; /* Position below header */
+  top: 80px;
   left: 1rem;
   background: #2d1b4e;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  padding: 0.5rem;
-  z-index: 9999; /* Very high z-index to appear above everything */
-  min-width: 180px;
+  padding: 0;
+  z-index: 9999;
+  min-width: 280px;
+  max-width: 320px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
+  overflow: hidden;
 }
 
 .menu-item {
@@ -131,11 +133,12 @@ html, body, #root {
   border: none;
   color: white;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
   min-height: 44px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .menu-item:hover {
@@ -146,26 +149,144 @@ html, body, #root {
   background: rgba(168, 85, 247, 0.3);
 }
 
-/* Wallet Section */
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0;
+}
+
+/* Balance Section in Dropdown */
+.balance-section {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.balance-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #fbbf24;
+  text-align: center;
+}
+
+.balance-group {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.balance-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #8b5cf6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.smart-account-label {
+  color: #f59e0b;
+}
+
+.copy-address-btn {
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.3s ease;
+}
+
+.copy-address-btn:hover {
+  background: rgba(139, 92, 246, 0.3);
+  transform: scale(1.05);
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.balance-item:last-child {
+  margin-bottom: 0;
+}
+
+.balance-amount {
+  font-weight: 600;
+  color: #10b981;
+}
+
+/* Transfer Buttons */
+.transfer-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.transfer-btn-small {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-height: 36px;
+}
+
+.transfer-btn-small:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.transfer-btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.transfer-btn-small.custom {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* Gas Settings in Menu */
+.menu-item.gas-settings {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  margin: 0.5rem;
+  border-radius: 6px;
+  width: calc(100% - 1rem);
+}
+
+.menu-item.gas-settings:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+/* Wallet Section - Clean Header */
 .wallet-section {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
-.wallet-balance {
-  background: rgba(5, 150, 105, 0.3);
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-weight: 600;
-  border: 1px solid rgba(5, 150, 105, 0.5);
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-/* Wallet Address Display */
 .wallet-address-container {
   display: flex;
   align-items: center;
@@ -188,11 +309,18 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  min-width: auto;
+  white-space: nowrap;
 }
 
 .wallet-address:hover {
   background: rgba(139, 92, 246, 0.3);
   transform: translateY(-1px);
+}
+
+.address-text {
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .copy-tooltip {
@@ -568,6 +696,130 @@ html, body, #root {
   width: 100%;
 }
 
+/* Transfer Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.transfer-modal {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.transfer-modal h3 {
+  color: white;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.transfer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.token-select, .amount-input, .address-input {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+}
+
+.token-select:focus, .amount-input:focus, .address-input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.balance-info {
+  font-size: 0.8rem;
+  color: #fbbf24;
+  text-align: right;
+}
+
+.quick-transfer-note {
+  font-size: 0.8rem;
+  color: #10b981;
+  text-align: center;
+  padding: 0.25rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+}
+
+.transfer-btn {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.transfer-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+}
+
+.transfer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* Gas Speed Selector Styles */
 .gas-options-overlay {
   position: fixed;
@@ -579,7 +831,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000; /* Above everything */
+  z-index: 10000;
 }
 
 .gas-options-modal {
@@ -710,20 +962,6 @@ html, body, #root {
   text-align: center;
 }
 
-/* Pulse animation for rewards */
-@keyframes pulse-gold {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
-  }
-}
-
-.pulse-reward {
-  animation: pulse-gold 2s infinite;
-}
-
 /* Smart Account Indicators */
 .smart-account-badge {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
@@ -766,55 +1004,6 @@ html, body, #root {
   }
 }
 
-/* Enhanced connect button for smart accounts */
-.connect-btn.smart-account {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.connect-btn.smart-account::before {
-  content: "⚡";
-  margin-right: 0.5rem;
-}
-
-/* Loading states for smart account operations */
-.smart-account-loading {
-  position: relative;
-  color: transparent;
-}
-
-.smart-account-loading::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Success states for smart account transactions */
-.transaction-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  animation: success-pulse 0.5s ease-in-out;
-}
-
-@keyframes success-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .game-header {
@@ -833,26 +1022,38 @@ html, body, #root {
   
   .wallet-section {
     gap: 0.25rem;
-  }
-  
-  .wallet-balance {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.7rem;
+    flex-wrap: nowrap;
   }
   
   .wallet-address {
     padding: 0.3rem 0.6rem;
     font-size: 0.7rem;
+    display: flex !important;
+    min-width: 70px;
+  }
+  
+  .address-text {
+    font-size: 0.65rem;
   }
   
   .connect-btn, .disconnect-btn {
     padding: 0.4rem 0.8rem;
     font-size: 0.7rem;
+    display: block !important;
   }
   
   .header-start-btn, .header-quit-btn {
     padding: 0.4rem 0.8rem;
     font-size: 0.7rem;
+  }
+  
+  .dropdown-menu {
+    min-width: 260px;
+    max-width: 280px;
+  }
+  
+  .transfer-buttons {
+    grid-template-columns: 1fr;
   }
   
   .game-main {
@@ -884,7 +1085,6 @@ html, body, #root {
   .dropdown-menu {
     top: 70px;
     left: 0.5rem;
-    min-width: 160px;
   }
   
   .game-area {
@@ -916,12 +1116,12 @@ html, body, #root {
     gap: 0.25rem;
   }
   
-  .gas-options-modal {
+  .gas-options-modal, .transfer-modal {
     padding: 1.5rem;
     max-width: 350px;
   }
   
-  .gas-option {
+  .gas-option, .transfer-form {
     padding: 0.75rem;
   }
 }
@@ -936,12 +1136,14 @@ html, body, #root {
     font-size: 1rem;
   }
   
-  .wallet-balance {
-    display: none;
+  .wallet-address {
+    display: flex !important;
+    min-width: 65px;
+    padding: 0.3rem 0.5rem;
   }
   
-  .wallet-address {
-    display: none;
+  .address-text {
+    font-size: 0.6rem;
   }
   
   .header-start-btn, .header-quit-btn {
@@ -952,24 +1154,32 @@ html, body, #root {
   .connect-btn, .disconnect-btn {
     padding: 0.3rem 0.6rem;
     font-size: 0.65rem;
+    display: block !important;
   }
   
   .smart-account-badge {
     display: none;
   }
   
-  .gas-options-modal {
+  .dropdown-menu {
+    min-width: 240px;
+    max-width: 260px;
+  }
+  
+  .balance-group {
+    padding: 0.5rem;
+  }
+  
+  .transfer-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .gas-options-modal, .transfer-modal {
     padding: 1rem;
     max-width: 320px;
   }
   
-  .gas-option-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-  
-  .gas-option-details {
+  .gas-option-header, .gas-option-details {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
@@ -987,6 +1197,20 @@ html, body, #root {
     font-size: 0.9rem;
   }
   
+  .wallet-address {
+    min-width: 60px;
+    padding: 0.25rem 0.4rem;
+  }
+  
+  .address-text {
+    font-size: 0.55rem;
+  }
+  
+  .dropdown-menu {
+    min-width: 220px;
+    max-width: 240px;
+  }
+  
   .game-stats {
     max-width: 280px;
   }
@@ -999,7 +1223,7 @@ html, body, #root {
     max-width: 280px;
   }
   
-  .gas-options-modal {
+  .gas-options-modal, .transfer-modal {
     max-width: 300px;
     padding: 0.75rem;
   }
@@ -1037,4 +1261,15 @@ button, .game-object {
 /* Ensure no horizontal scroll */
 body {
   overflow-x: hidden;
+}
+
+/* Force display important rules for mobile address visibility */
+@media (max-width: 480px) {
+  .wallet-address,
+  .connect-btn,
+  .disconnect-btn {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
 }
