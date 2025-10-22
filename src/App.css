@@ -62,6 +62,11 @@ html, body, #root {
   text-align: center;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .header-center h1 {
@@ -158,6 +163,56 @@ html, body, #root {
   border: 1px solid rgba(5, 150, 105, 0.5);
   font-size: 0.8rem;
   white-space: nowrap;
+}
+
+/* Wallet Address Display */
+.wallet-address-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.wallet-address {
+  background: rgba(139, 92, 246, 0.2);
+  color: white;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.8rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wallet-address:hover {
+  background: rgba(139, 92, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.copy-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  animation: fadeInOut 2s ease-in-out;
+  z-index: 1000;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  10%, 90% { opacity: 1; }
 }
 
 /* Button Styles */
@@ -506,11 +561,153 @@ html, body, #root {
 .game-footer {
   text-align: center;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(139, 92, 246, 0.1);
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
   font-size: 0.75rem;
   opacity: 0.8;
   width: 100%;
+}
+
+/* Gas Speed Selector Styles */
+.gas-options-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000; /* Above everything */
+}
+
+.gas-options-modal {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.gas-options-modal h3 {
+  color: white;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.gas-options-description {
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.gas-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.gas-option {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.gas-option:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.gas-option.selected {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.gas-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.gas-option-name {
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.gas-option-time {
+  color: #fbbf24;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gas-option-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gas-price {
+  color: #10b981;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.gas-description {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+}
+
+.close-gas-options {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.close-gas-options:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.gas-speed-selector {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+  min-height: 44px;
+}
+
+.gas-speed-selector:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
+}
+
+.gas-speed-section {
+  text-align: center;
 }
 
 /* Pulse animation for rewards */
@@ -525,6 +722,97 @@ html, body, #root {
 
 .pulse-reward {
   animation: pulse-gold 2s infinite;
+}
+
+/* Smart Account Indicators */
+.smart-account-badge {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  display: inline-block;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.8);
+  }
+}
+
+.smart-indicator {
+  color: #8b5cf6;
+  font-size: 1rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Enhanced connect button for smart accounts */
+.connect-btn.smart-account {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.connect-btn.smart-account::before {
+  content: "⚡";
+  margin-right: 0.5rem;
+}
+
+/* Loading states for smart account operations */
+.smart-account-loading {
+  position: relative;
+  color: transparent;
+}
+
+.smart-account-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Success states for smart account transactions */
+.transaction-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  animation: success-pulse 0.5s ease-in-out;
+}
+
+@keyframes success-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 /* Mobile Responsive */
@@ -548,6 +836,11 @@ html, body, #root {
   }
   
   .wallet-balance {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
+  
+  .wallet-address {
     padding: 0.3rem 0.6rem;
     font-size: 0.7rem;
   }
@@ -612,6 +905,25 @@ html, body, #root {
   .game-controls {
     max-width: 300px;
   }
+  
+  .smart-account-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    margin-left: 0.25rem;
+  }
+  
+  .header-center {
+    gap: 0.25rem;
+  }
+  
+  .gas-options-modal {
+    padding: 1.5rem;
+    max-width: 350px;
+  }
+  
+  .gas-option {
+    padding: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -628,6 +940,10 @@ html, body, #root {
     display: none;
   }
   
+  .wallet-address {
+    display: none;
+  }
+  
   .header-start-btn, .header-quit-btn {
     padding: 0.3rem 0.6rem;
     font-size: 0.65rem;
@@ -636,6 +952,27 @@ html, body, #root {
   .connect-btn, .disconnect-btn {
     padding: 0.3rem 0.6rem;
     font-size: 0.65rem;
+  }
+  
+  .smart-account-badge {
+    display: none;
+  }
+  
+  .gas-options-modal {
+    padding: 1rem;
+    max-width: 320px;
+  }
+  
+  .gas-option-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .gas-option-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
 }
 
@@ -660,6 +997,11 @@ html, body, #root {
   
   .game-over-screen {
     max-width: 280px;
+  }
+  
+  .gas-options-modal {
+    max-width: 300px;
+    padding: 0.75rem;
   }
 }
 

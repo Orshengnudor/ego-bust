@@ -1,28 +1,184 @@
 import { useState, useEffect, useRef } from "react";
-import { ethers } from "ethers";
+import { createConfig, http, useAccount, useConnect, useDisconnect, usePublicClient, useWalletClient } from "wagmi";
+import { metaMask } from "wagmi/connectors";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { 
+  Implementation, 
+  toMetaMaskSmartAccount
+} from "@metamask/delegation-toolkit";
+import { createBundlerClient } from "viem/account-abstraction";
+import { parseEther, encodeFunctionData } from "viem";
 import "./App.css";
-import leaderboardABI from "./abi/EgoBustLeaderboard.json";
 
-// WMON Token ABI
+// Monad Testnet Configuration
+const monadTestnet = {
+  id: 10143,
+  name: 'Monad Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Monad',
+    symbol: 'MON',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://monad-testnet.g.alchemy.com/v2/b5Q7A1uPLthyIDS1OsWo9'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Monad Testnet Explorer',
+      url: 'https://testnet.monadexplorer.com',
+    },
+  },
+  testnet: true,
+};
+
+const config = createConfig({
+  chains: [monadTestnet],
+  connectors: [
+    metaMask(),
+  ],
+  transports: {
+    [monadTestnet.id]: http(),
+  },
+});
+
+const queryClient = new QueryClient();
+
+// Fixed ABI definitions - proper format for Viem
 const WMON_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)"
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ type: 'uint256' }]
+  },
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' }
+    ],
+    outputs: [{ type: 'bool' }]
+  }
 ];
 
-// Reward Contract ABI
+// Fixed Reward Contract ABI
 const REWARD_ABI = [
-  "function addScore(uint256 _score) external",
-  "function claimRewards() external",
-  "function getPlayerStats(address player) external view returns (uint256 totalScore, uint256 totalGames, uint256 pendingRewards, uint256 totalClaimed, uint256 lastClaimedScore)",
-  "function getLeaderboard() external view returns (tuple(address wallet, uint256 score, uint256 gamesPlayed, uint256 totalEarned)[])",
-  "function getPendingRewards(address player) external view returns (uint256)",
-  "event RewardsClaimed(address indexed player, uint256 score, uint256 amount)",
-  "event ScoreAdded(address indexed player, uint256 score, uint256 gamesPlayed)"
+  {
+    name: 'addScore',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: '_score', type: 'uint256' }],
+    outputs: []
+  },
+  {
+    name: 'claimRewards',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: []
+  },
+  {
+    name: 'getPlayerStats',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'player', type: 'address' }],
+    outputs: [
+      { name: 'totalScore', type: 'uint256' },
+      { name: 'totalGames', type: 'uint256' },
+      { name: 'pendingRewards', type: 'uint256' },
+      { name: 'totalClaimed', type: 'uint256' },
+      { name: 'lastClaimedScore', type: 'uint256' }
+    ]
+  },
+  {
+    name: 'getLeaderboard',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      {
+        type: 'tuple[]',
+        components: [
+          { name: 'wallet', type: 'address' },
+          { name: 'score', type: 'uint256' },
+          { name: 'gamesPlayed', type: 'uint256' },
+          { name: 'totalEarned', type: 'uint256' }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'getPendingRewards',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'player', type: 'address' }],
+    outputs: [{ type: 'uint256' }]
+  },
+  {
+    type: 'event',
+    name: 'RewardsClaimed',
+    inputs: [
+      { name: 'player', type: 'address', indexed: true },
+      { name: 'score', type: 'uint256', indexed: false },
+      { name: 'amount', type: 'uint256', indexed: false }
+    ]
+  },
+  {
+    type: 'event',
+    name: 'ScoreAdded',
+    inputs: [
+      { name: 'player', type: 'address', indexed: true },
+      { name: 'score', type: 'uint256', indexed: false },
+      { name: 'gamesPlayed', type: 'uint256', indexed: false }
+    ]
+  }
 ];
 
+// Update these with your Monad testnet contract addresses
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
-const WMON_ADDRESS = import.meta.env.VITE_WMON_ADDRESS;
-const REWARD_CONTRACT_ADDRESS = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS;
+const WMON_ADDRESS = import.meta.env.VITE_WMON_ADDRESS || "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701";
+const REWARD_CONTRACT_ADDRESS = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS || "0xa2B98D710AB9c0BC5aA4d21552B343A297C83dFF";
+
+// Alchemy RPC URL for Monad Testnet
+const ALCHEMY_RPC_URL = "https://monad-testnet.g.alchemy.com/v2/b5Q7A1uPLthyIDS1OsWo9";
+
+// Gas speed options - similar to MetaMask
+const GAS_SPEED_OPTIONS = {
+  slow: {
+    name: "🐢 Slow",
+    maxFeePerGas: parseEther("0.0000001"), // 100 gwei
+    maxPriorityFeePerGas: parseEther("0.0000001"), // 100 gwei
+    description: "Lower cost, slower confirmation",
+    estimatedTime: "2-5 min"
+  },
+  medium: {
+    name: "⚡ Medium", 
+    maxFeePerGas: parseEther("0.00000015"), // 150 gwei
+    maxPriorityFeePerGas: parseEther("0.00000015"), // 150 gwei
+    description: "Balanced speed and cost",
+    estimatedTime: "1-2 min"
+  },
+  fast: {
+    name: "🚀 Fast",
+    maxFeePerGas: parseEther("0.0000002"), // 200 gwei
+    maxPriorityFeePerGas: parseEther("0.0000002"), // 200 gwei
+    description: "Faster confirmation",
+    estimatedTime: "30-60 sec"
+  },
+  aggressive: {
+    name: "🔥 Aggressive",
+    maxFeePerGas: parseEther("0.0000003"), // 300 gwei
+    maxPriorityFeePerGas: parseEther("0.0000003"), // 300 gwei
+    description: "Highest priority, fastest confirmation",
+    estimatedTime: "10-30 sec"
+  }
+};
 
 const IMAGES = Array.from({ length: 221 }, (_, i) => `/images/${i}.png`);
 
@@ -39,15 +195,20 @@ function GameApp() {
   const [showMenu, setShowMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('game');
   const [scoreSaved, setScoreSaved] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [showGasOptions, setShowGasOptions] = useState(false);
+  const [selectedGasSpeed, setSelectedGasSpeed] = useState('medium'); // Default to medium
   
-  // Web3 States
-  const [account, setAccount] = useState(null);
-  const [provider, setProvider] = useState(null);
+  // Web3 States with Smart Account
+  const [smartAccount, setSmartAccount] = useState(null);
+  const [smartAccountAddress, setSmartAccountAddress] = useState(null);
+  const [bundlerClient, setBundlerClient] = useState(null);
   const [wmonBalance, setWmonBalance] = useState("0");
   const [pendingRewards, setPendingRewards] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isSavingScore, setIsSavingScore] = useState(false);
+  const [pendingTxHash, setPendingTxHash] = useState(null);
   
   // Data States
   const [leaderboard, setLeaderboard] = useState([]);
@@ -58,6 +219,13 @@ function GameApp() {
     totalClaimed: 0
   });
 
+  // Wagmi hooks
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+
   const spawnIntervalRef = useRef(null);
   const cleanupIntervalRef = useRef(null);
   const gameAreaRef = useRef(null);
@@ -66,6 +234,74 @@ function GameApp() {
   const BASE_GAME_HEIGHT = 384;
   const IMAGE_SIZE = 35;
   const BORDER_WIDTH = 3;
+
+  // Copy address to clipboard
+  const copyAddress = async () => {
+    const addressToCopy = smartAccountAddress || address;
+    if (!addressToCopy) return;
+    
+    try {
+      await navigator.clipboard.writeText(addressToCopy);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
+    }
+  };
+
+  // Format address for display
+  const formatAddress = (addr) => {
+    if (!addr) return '';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  // Initialize Smart Account when wallet connects
+  useEffect(() => {
+    const initializeSmartAccount = async () => {
+      if (!isConnected || !publicClient || !walletClient) return;
+
+      try {
+        setIsConnecting(true);
+        
+        // Create bundler client using Alchemy's RPC service on Monad Testnet
+        const bundler = createBundlerClient({
+          transport: http(ALCHEMY_RPC_URL),
+        });
+
+        setBundlerClient(bundler);
+
+        // Create MetaMask Smart Account
+        const addresses = await walletClient.getAddresses();
+        const userAddress = addresses[0];
+
+        const smartAcc = await toMetaMaskSmartAccount({
+          client: publicClient,
+          implementation: Implementation.Hybrid,
+          deployParams: [userAddress, [], [], []],
+          deploySalt: "0x",
+          signer: { walletClient },
+        });
+
+        setSmartAccount(smartAcc);
+        setSmartAccountAddress(smartAcc.address);
+        
+        await loadWmonBalance(smartAcc.address);
+        await loadPlayerStats(smartAcc.address);
+        await loadLeaderboardData();
+        
+        console.log("Smart Account initialized:", smartAcc.address);
+        console.log("Bundler client initialized with Alchemy RPC");
+        
+      } catch (error) {
+        console.error("Smart account initialization error:", error);
+        console.log("Smart Account initialized but bundler might not be available:", error.message);
+      } finally {
+        setIsConnecting(false);
+      }
+    };
+
+    initializeSmartAccount();
+  }, [isConnected, publicClient, walletClient]);
 
   // Preload images
   useEffect(() => {
@@ -86,52 +322,33 @@ function GameApp() {
   useEffect(() => {
     const handleClickOutside = () => {
       setShowMenu(false);
+      setShowGasOptions(false);
     };
 
-    if (showMenu) {
+    if (showMenu || showGasOptions) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showMenu]);
+  }, [showMenu, showGasOptions]);
 
-  // Connect Metamask with better error handling
+  // Connect with MetaMask Smart Account
   const connectWallet = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        setIsConnecting(true);
-        
-        // Check if we need to handle any wallet conflicts
-        if (window.ethereum.providers) {
-          // Multiple wallets detected, use the first one
-          window.ethereum = window.ethereum.providers.find(p => p.isMetaMask);
-        }
-
-        const accounts = await window.ethereum.request({
-          method: 'eth_requestAccounts',
-        });
-        
-        const web3Provider = new ethers.BrowserProvider(window.ethereum);
-        setProvider(web3Provider);
-        setAccount(accounts[0]);
-        
-        await loadWmonBalance(web3Provider, accounts[0]);
-        await loadPlayerStats(web3Provider, accounts[0]);
-        await loadLeaderboardData(web3Provider);
-        
-      } catch (error) {
-        console.error("Connection error:", error);
-        alert("Please connect your Metamask wallet to play!");
-      } finally {
-        setIsConnecting(false);
-      }
-    } else {
-      alert('Metamask is not installed! Please install it to play.');
+    try {
+      setIsConnecting(true);
+      connect({ connector: metaMask() });
+    } catch (error) {
+      console.error("Connection error:", error);
+      alert("Please connect your MetaMask wallet to play!");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const disconnectWallet = () => {
-    setAccount(null);
-    setProvider(null);
+    disconnect();
+    setSmartAccount(null);
+    setSmartAccountAddress(null);
+    setBundlerClient(null);
     setWmonBalance("0");
     setPendingRewards(0);
     setPlayerStats({
@@ -141,53 +358,68 @@ function GameApp() {
       totalClaimed: 0
     });
     setScoreSaved(false);
+    setCopiedAddress(false);
+    setPendingTxHash(null);
   };
 
-  // Load WMON balance
-  const loadWmonBalance = async (web3Provider, userAddress) => {
+  // Load WMON balance using Public Client
+  const loadWmonBalance = async (userAddress) => {
+    if (!publicClient || !WMON_ADDRESS) return;
+    
     try {
-      const wmonContract = new ethers.Contract(WMON_ADDRESS, WMON_ABI, web3Provider);
-      const balance = await wmonContract.balanceOf(userAddress);
-      setWmonBalance(parseFloat(ethers.formatUnits(balance, 18)).toFixed(4));
+      const balance = await publicClient.readContract({
+        address: WMON_ADDRESS,
+        abi: WMON_ABI,
+        functionName: 'balanceOf',
+        args: [userAddress],
+      });
+      setWmonBalance(parseFloat(balance.toString() / 1e18).toFixed(4));
     } catch (error) {
       console.error("Error loading WMON balance:", error);
     }
   };
 
   // Load player stats
-  const loadPlayerStats = async (web3Provider, userAddress) => {
-    if (!REWARD_CONTRACT_ADDRESS) return;
+  const loadPlayerStats = async (userAddress) => {
+    if (!publicClient || !REWARD_CONTRACT_ADDRESS) return;
     
     try {
-      const rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, web3Provider);
-      const stats = await rewardContract.getPlayerStats(userAddress);
-      
-      setPlayerStats({
-        totalScore: Number(stats.totalScore),
-        totalGames: Number(stats.totalGames),
-        pendingRewards: Number(ethers.formatUnits(stats.pendingRewards, 18)),
-        totalClaimed: Number(ethers.formatUnits(stats.totalClaimed, 18))
+      const stats = await publicClient.readContract({
+        address: REWARD_CONTRACT_ADDRESS,
+        abi: REWARD_ABI,
+        functionName: 'getPlayerStats',
+        args: [userAddress],
       });
       
-      setPendingRewards(Number(ethers.formatUnits(stats.pendingRewards, 18)));
+      setPlayerStats({
+        totalScore: Number(stats[0]),
+        totalGames: Number(stats[1]),
+        pendingRewards: Number(stats[2]) / 1e18,
+        totalClaimed: Number(stats[3]) / 1e18
+      });
+      
+      setPendingRewards(Number(stats[2]) / 1e18);
     } catch (error) {
       console.error("Error loading player stats:", error);
     }
   };
 
   // Load leaderboard data
-  const loadLeaderboardData = async (web3Provider) => {
-    if (!REWARD_CONTRACT_ADDRESS) return;
+  const loadLeaderboardData = async () => {
+    if (!publicClient || !REWARD_CONTRACT_ADDRESS) return;
     
     try {
-      const rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, web3Provider);
-      const data = await rewardContract.getLeaderboard();
+      const data = await publicClient.readContract({
+        address: REWARD_CONTRACT_ADDRESS,
+        abi: REWARD_ABI,
+        functionName: 'getLeaderboard',
+      });
       
       const formatted = data.map(entry => ({
         wallet: entry.wallet,
         score: Number(entry.score),
         gamesPlayed: Number(entry.gamesPlayed),
-        totalEarned: Number(ethers.formatUnits(entry.totalEarned, 18))
+        totalEarned: Number(entry.totalEarned) / 1e18
       }));
       
       formatted.sort((a, b) => b.score - a.score);
@@ -197,42 +429,104 @@ function GameApp() {
     }
   };
 
-  // Save score and accumulate rewards (WITH EXPLOIT FIX)
+  // Save score using Smart Account User Operation
   const saveScoreAndAccumulate = async () => {
-    if (!account || !provider || scoreSaved) return;
+    if (!smartAccount || scoreSaved) return;
     
     try {
       setIsSavingScore(true);
-      const signer = await provider.getSigner();
-      const rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, signer);
 
-      console.log("Saving score:", score);
-      const tx = await rewardContract.addScore(score);
-      console.log("Transaction sent:", tx.hash);
+      console.log("Saving score with smart account:", score);
       
-      await tx.wait();
-      console.log("Transaction confirmed");
+      if (!bundlerClient) {
+        alert("Bundler service not available. Please try again.");
+        return;
+      }
+
+      // First, let's check if the Smart Account has funds
+      const balance = await publicClient.getBalance({
+        address: smartAccountAddress,
+      });
+
+      console.log("Smart Account balance:", balance.toString());
+
+      // Get selected gas options
+      const gasOptions = GAS_SPEED_OPTIONS[selectedGasSpeed];
+      
+      // Calculate estimated cost for the selected gas speed
+      const estimatedGasCost = parseFloat(gasOptions.maxFeePerGas.toString() / 1e18) * 300000; // Rough estimate
+      
+      if (balance < parseEther(estimatedGasCost.toString())) {
+        alert(`Your Smart Account needs MON tokens for gas! Current balance: ${parseFloat(balance.toString() / 1e18).toFixed(6)} MON. Please send at least ${estimatedGasCost.toFixed(6)} MON to your Smart Account address: ${smartAccountAddress}`);
+        return;
+      }
+
+      console.log(`Using gas speed: ${gasOptions.name} (${gasOptions.maxFeePerGas.toString() / 1e9} gwei)`);
+
+      const userOperationHash = await bundlerClient.sendUserOperation({
+        account: smartAccount,
+        calls: [
+          {
+            to: REWARD_CONTRACT_ADDRESS,
+            data: encodeFunctionData({
+              abi: REWARD_ABI,
+              functionName: 'addScore',
+              args: [score],
+            }),
+          },
+        ],
+        maxFeePerGas: gasOptions.maxFeePerGas,
+        maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
+      });
+
+      console.log("User operation sent:", userOperationHash);
+      setPendingTxHash(userOperationHash);
+      
+      // Wait for transaction receipt with timeout based on gas speed
+      const timeout = selectedGasSpeed === 'aggressive' ? 30000 : 
+                     selectedGasSpeed === 'fast' ? 45000 :
+                     selectedGasSpeed === 'medium' ? 60000 : 90000;
+      
+      const { receipt } = await bundlerClient.waitForUserOperationReceipt({
+        hash: userOperationHash,
+        timeout: timeout,
+      });
+      
+      console.log("Transaction confirmed:", receipt.transactionHash);
       
       // Mark score as saved to prevent multiple saves
       setScoreSaved(true);
+      setPendingTxHash(null);
       
       // Reload data
-      await loadPlayerStats(provider, account);
-      await loadLeaderboardData(provider);
+      await loadPlayerStats(smartAccountAddress);
+      await loadLeaderboardData();
       
-      alert("Score saved successfully! 🎯");
+      alert(`🎉 Score saved successfully with ${gasOptions.name} speed! Your WMON rewards have been accumulated.`);
       
     } catch (err) {
       console.error("Save score error:", err);
-      alert("Failed to save score. Please try again. Make sure you're on the correct network.");
+      
+      if (err.message?.includes("timeout") || err.message?.includes("Timed out")) {
+        alert(`Transaction is taking longer than expected with ${GAS_SPEED_OPTIONS[selectedGasSpeed].name} speed. It may still be processing. Please check the transaction status later or try a faster gas speed.`);
+        // Don't mark as saved if it timed out - let user retry
+      } else if (err.message?.includes("insufficient funds") || err.message?.includes("prefund")) {
+        alert(`Your Smart Account needs MON tokens for gas! Please send MON to: ${smartAccountAddress}`);
+      } else if (err.message?.includes("replacement underpriced")) {
+        alert("Previous transaction is still pending. Please wait a few moments and try again.");
+      } else if (err.message?.includes("maxFeePerGas") || err.message?.includes("gas")) {
+        alert("Gas price issue detected. Please try again with a different gas speed.");
+      } else {
+        alert("Failed to save score. Please check the console for details.");
+      }
     } finally {
       setIsSavingScore(false);
     }
   };
 
-  // Claim WMON rewards
+  // Claim WMON rewards using Smart Account
   const claimRewards = async () => {
-    if (!account || !provider) return;
+    if (!smartAccount) return;
 
     if (pendingRewards < 1) {
       alert(`You need at least 1 WMON to claim! Current: ${pendingRewards.toFixed(2)} WMON`);
@@ -241,27 +535,76 @@ function GameApp() {
 
     try {
       setIsClaiming(true);
-      const signer = await provider.getSigner();
-      const rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, signer);
       
-      const tx = await rewardContract.claimRewards();
-      await tx.wait();
+      if (!bundlerClient) {
+        alert("Bundler service not available. Cannot claim rewards with Smart Account.");
+        return;
+      }
+
+      // Check Smart Account balance
+      const balance = await publicClient.getBalance({
+        address: smartAccountAddress,
+      });
+
+      // Get selected gas options
+      const gasOptions = GAS_SPEED_OPTIONS[selectedGasSpeed];
+      const estimatedGasCost = parseFloat(gasOptions.maxFeePerGas.toString() / 1e18) * 300000;
+
+      if (balance < parseEther(estimatedGasCost.toString())) {
+        alert(`Your Smart Account needs MON tokens for gas! Current balance: ${parseFloat(balance.toString() / 1e18).toFixed(6)} MON. Please send at least ${estimatedGasCost.toFixed(6)} MON to your Smart Account address: ${smartAccountAddress}`);
+        return;
+      }
       
-      alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON!`);
+      console.log(`Claiming rewards with gas speed: ${gasOptions.name}`);
+
+      const userOperationHash = await bundlerClient.sendUserOperation({
+        account: smartAccount,
+        calls: [
+          {
+            to: REWARD_CONTRACT_ADDRESS,
+            data: encodeFunctionData({
+              abi: REWARD_ABI,
+              functionName: 'claimRewards',
+              args: [],
+            }),
+          },
+        ],
+        maxFeePerGas: gasOptions.maxFeePerGas,
+        maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
+      });
+
+      const timeout = selectedGasSpeed === 'aggressive' ? 30000 : 
+                     selectedGasSpeed === 'fast' ? 45000 :
+                     selectedGasSpeed === 'medium' ? 60000 : 90000;
+
+      const { receipt } = await bundlerClient.waitForUserOperationReceipt({
+        hash: userOperationHash,
+        timeout: timeout,
+      });
       
-      await loadWmonBalance(provider, account);
-      await loadPlayerStats(provider, account);
-      await loadLeaderboardData(provider);
+      alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON with ${gasOptions.name} speed!`);
+      
+      await loadWmonBalance(smartAccountAddress);
+      await loadPlayerStats(smartAccountAddress);
+      await loadLeaderboardData();
       
     } catch (error) {
       console.error("Error claiming rewards:", error);
-      alert("Failed to claim rewards. Please try again.");
+      if (error.message?.includes("insufficient funds") || error.message?.includes("prefund")) {
+        alert(`Your Smart Account needs MON tokens for gas! Please send MON to: ${smartAccountAddress}`);
+      } else if (error.message?.includes("maxFeePerGas") || error.message?.includes("gas")) {
+        alert("Gas price issue detected. Please try again with a different gas speed.");
+      } else if (error.message?.includes("replacement underpriced")) {
+        alert("Previous transaction is still pending. Please wait a few moments and try again.");
+      } else {
+        alert("Failed to claim rewards. Please try again.");
+      }
     } finally {
       setIsClaiming(false);
     }
   };
 
-  // Game logic functions (same as before)
+  // Game logic functions
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
@@ -339,8 +682,9 @@ function GameApp() {
     }
   }, [time, gameStarted, gameOver, paused]);
 
+  // Game control functions
   const startGame = () => {
-    if (!account) {
+    if (!isConnected) {
       alert("Please connect your wallet first!");
       return;
     }
@@ -352,7 +696,7 @@ function GameApp() {
     setTime(30);
     setObjects([]);
     setClickedObjects(new Set());
-    setScoreSaved(false); // Reset score saved state
+    setScoreSaved(false);
   };
 
   const quitGame = () => {
@@ -371,7 +715,6 @@ function GameApp() {
   const bustObject = (id) => {
     if (paused) return;
     
-    // Add bust effect
     setClickedObjects((prev) => new Set(prev).add(id));
     
     setTimeout(() => {
@@ -383,6 +726,49 @@ function GameApp() {
       });
       setScore((prev) => prev + 10);
     }, 300);
+  };
+
+  // Render Gas Speed Selector
+  const renderGasSpeedSelector = () => {
+    if (!showGasOptions) return null;
+
+    return (
+      <div className="gas-options-overlay" onClick={(e) => e.stopPropagation()}>
+        <div className="gas-options-modal">
+          <h3>⚡ Select Gas Speed</h3>
+          <p className="gas-options-description">Choose transaction speed and cost</p>
+          
+          <div className="gas-options-list">
+            {Object.entries(GAS_SPEED_OPTIONS).map(([key, option]) => (
+              <div 
+                key={key}
+                className={`gas-option ${selectedGasSpeed === key ? 'selected' : ''}`}
+                onClick={() => {
+                  setSelectedGasSpeed(key);
+                  setShowGasOptions(false);
+                }}
+              >
+                <div className="gas-option-header">
+                  <span className="gas-option-name">{option.name}</span>
+                  <span className="gas-option-time">{option.estimatedTime}</span>
+                </div>
+                <div className="gas-option-details">
+                  <span className="gas-price">{(option.maxFeePerGas.toString() / 1e9).toFixed(0)} gwei</span>
+                  <span className="gas-description">{option.description}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button 
+            className="close-gas-options"
+            onClick={() => setShowGasOptions(false)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Render different content based on active tab
@@ -412,13 +798,13 @@ function GameApp() {
                         <tr 
                           key={idx} 
                           className={`border-b border-purple-700 hover:bg-purple-700 transition-colors ${
-                            entry.wallet.toLowerCase() === account?.toLowerCase() ? 'bg-purple-600' : ''
+                            entry.wallet.toLowerCase() === smartAccountAddress?.toLowerCase() ? 'bg-purple-600' : ''
                           }`}
                         >
                           <td className="py-3 px-4 font-semibold">#{idx + 1}</td>
                           <td className="py-3 px-4 font-mono">
-                            {entry.wallet.slice(0, 6)}...{entry.wallet.slice(-4)}
-                            {entry.wallet.toLowerCase() === account?.toLowerCase() && (
+                            {formatAddress(entry.wallet)}
+                            {entry.wallet.toLowerCase() === smartAccountAddress?.toLowerCase() && (
                               <span className="ml-2 text-yellow-400">⭐</span>
                             )}
                           </td>
@@ -462,6 +848,17 @@ function GameApp() {
             
             {pendingRewards >= 1 && (
               <div className="mt-8 text-center">
+                <div className="mb-4">
+                  <button 
+                    className="gas-speed-selector"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowGasOptions(!showGasOptions);
+                    }}
+                  >
+                    ⚡ Gas: {GAS_SPEED_OPTIONS[selectedGasSpeed].name}
+                  </button>
+                </div>
                 <button 
                   onClick={claimRewards}
                   disabled={isClaiming}
@@ -496,11 +893,11 @@ function GameApp() {
             {/* Game Area */}
             <div
               className={`relative overflow-hidden rounded-xl game-area ${paused ? "paused" : ""} ${
-                !account ? "opacity-50" : ""
+                !isConnected ? "opacity-50" : ""
               }`}
               ref={gameAreaRef}
             >
-              {!account && (
+              {!isConnected && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
                   <p className="text-white text-lg font-semibold">Connect Wallet to Play</p>
                 </div>
@@ -526,7 +923,7 @@ function GameApp() {
               {!gameStarted ? (
                 <button 
                   onClick={startGame} 
-                  disabled={!account}
+                  disabled={!isConnected}
                   className="start-btn"
                 >
                   🚀 Start Game
@@ -552,12 +949,27 @@ function GameApp() {
               )}
             </div>
 
-            {/* Game Over Screen - Only show if score not saved yet */}
+            {/* Game Over Screen */}
             {gameOver && !scoreSaved && (
               <div className="game-over-screen">
                 <h2>Game Over! 🎮</h2>
                 <p>Score: <span>{score}</span></p>
                 <p>WMON Earned: <span>{(score * 0.01).toFixed(2)}</span></p>
+                
+                <div className="gas-speed-section mb-4">
+                  <button 
+                    className="gas-speed-selector"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowGasOptions(!showGasOptions);
+                    }}
+                  >
+                    ⚡ Gas: {GAS_SPEED_OPTIONS[selectedGasSpeed].name}
+                  </button>
+                  <p className="text-xs opacity-70 mt-1">
+                    Estimated: {GAS_SPEED_OPTIONS[selectedGasSpeed].estimatedTime}
+                  </p>
+                </div>
                 
                 <div className="actions">
                   <button 
@@ -571,10 +983,15 @@ function GameApp() {
                     🔄 Play Again
                   </button>
                 </div>
+                {pendingTxHash && (
+                  <div className="mt-4 p-3 bg-yellow-800 rounded-lg">
+                    <p className="text-sm">⏳ Transaction pending: {pendingTxHash.slice(0, 10)}...</p>
+                    <p className="text-xs opacity-80">Please wait for confirmation before trying again.</p>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Show message if score already saved */}
             {gameOver && scoreSaved && (
               <div className="game-over-screen">
                 <h2>Score Saved! ✅</h2>
@@ -595,9 +1012,9 @@ function GameApp() {
 
   return (
     <div className="game-app">
-      {/* Header - All in one line */}
+      {renderGasSpeedSelector()}
+      
       <header className="game-header">
-        {/* Hamburger Menu */}
         <div className="header-left">
           <button 
             className="menu-btn"
@@ -632,17 +1049,18 @@ function GameApp() {
           )}
         </div>
 
-        {/* Game Title */}
         <div className="header-center">
           <h1>🎯 Ego Bust</h1>
+          {smartAccount && (
+            <span className="smart-account-badge">⚡ Smart Account</span>
+          )}
         </div>
 
-        {/* Start Game Button & Wallet Connection */}
         <div className="header-right">
           {!gameStarted ? (
             <button 
               onClick={startGame} 
-              disabled={!account}
+              disabled={!isConnected}
               className="start-btn header-start-btn"
             >
               🚀 Start Game
@@ -656,8 +1074,19 @@ function GameApp() {
             </button>
           )}
           
-          {account ? (
+          {isConnected ? (
             <div className="wallet-section">
+              <div className="wallet-address-container">
+                <button 
+                  onClick={copyAddress}
+                  className="wallet-address"
+                  title="Click to copy Smart Account address"
+                >
+                  {formatAddress(smartAccountAddress)}
+                  {copiedAddress && <span className="copy-tooltip">Copied!</span>}
+                  <span className="smart-indicator">⚡</span>
+                </button>
+              </div>
               <span className="wallet-balance">{wmonBalance} WMON</span>
               <button onClick={disconnectWallet} className="disconnect-btn">
                 Disconnect
@@ -669,23 +1098,42 @@ function GameApp() {
               disabled={isConnecting}
               className="connect-btn"
             >
-              {isConnecting ? "Connecting..." : "Connect Wallet"}
+              {isConnecting ? "Connecting..." : "Connect Smart Account"}
             </button>
           )}
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="game-main">
         {renderContent()}
       </main>
 
-      {/* Footer */}
       <footer className="game-footer">
-        <p>0.01 WMON per point | Min 1 WMON to claim | Rewards accumulate across games</p>
+        <p>⚡ Powered by MetaMask Smart Accounts | Monad Testnet | 0.01 WMON per point | Min 1 WMON to claim</p>
+        {smartAccount && (
+          <p style={{color: '#fbbf24', fontSize: '0.7rem', marginTop: '0.5rem'}}>
+            Smart Account: {smartAccountAddress} - Send MON to this address for gas
+          </p>
+        )}
+        {bundlerClient && (
+          <p style={{color: '#10B981', fontSize: '0.7rem', marginTop: '0.5rem'}}>
+            ✅ Current gas speed: {GAS_SPEED_OPTIONS[selectedGasSpeed].name} ({(GAS_SPEED_OPTIONS[selectedGasSpeed].maxFeePerGas.toString() / 1e9).toFixed(0)} gwei)
+          </p>
+        )}
       </footer>
     </div>
   );
 }
 
-export default GameApp;
+// Wrap with providers
+function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <GameApp />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+export default App;
