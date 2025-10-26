@@ -16,9 +16,7 @@ import { createBundlerClient } from "viem/account-abstraction";
 import { parseEther, encodeFunctionData } from "viem";
 import "./App.css";
 
-// -----------------------------
 // Configuration
-// -----------------------------
 const monadTestnet = {
   id: 10143,
   name: "Monad Testnet",
@@ -38,13 +36,11 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-// Pimlico bundler RPC (you confirmed using Pimlico on Monad testnet)
+// Pimlico Configuration
 const PIMLICO_API_URL = "https://api.pimlico.io/v2/10143/rpc?apikey=pim_WapePDipcDKyLBZrhxvqo7";
 const PIMLICO_BUNDLER_URL = PIMLICO_API_URL;
 
-// -----------------------------
-// ABIs & Addresses
-// -----------------------------
+// Contract ABIs
 const WMON_ABI = [
   { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
   { name: "transfer", type: "function", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
@@ -89,37 +85,26 @@ const REWARD_ABI = [
 const WMON_ADDRESS = import.meta.env.VITE_WMON_ADDRESS || "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701";
 const REWARD_CONTRACT_ADDRESS = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS || "0xa2B98D710AB9c0BC5aA4d21552B343A297C83dFF";
 
-// -----------------------------
-// Gas presets (store gwei numbers; conversions handled later)
-// -----------------------------
+// Gas Configuration
 const GAS_SPEED_OPTIONS = {
   standard: { name: "🐢 Standard", gwei: 9, description: "Lowest cost, slower confirmation", estimatedTime: "30-60 sec" },
   low: { name: "⚡ Low", gwei: 10, description: "Balanced speed and cost", estimatedTime: "20-40 sec" },
   high: { name: "🚀 High", gwei: 100, description: "Faster confirmation", estimatedTime: "10-20 sec" },
 };
 
-// images
 const IMAGES = Array.from({ length: 221 }, (_, i) => `/images/${i}.png`);
 
-// -----------------------------
-// Helpers: gwei <-> wei conversions
-// -----------------------------
+// Utility Functions
 const gweiToWeiBigInt = (gwei) => {
-  // Accept number or string; return BigInt(wei)
   const n = Number(gwei);
   if (Number.isNaN(n)) throw new Error("Invalid gwei value");
-  return BigInt(Math.round(n * 1e9)); // gwei * 1e9 => wei
+  return BigInt(Math.round(n * 1e9));
 };
 
-const weiBigIntToGweiNumber = (weiBigInt) => {
-  return Number(weiBigInt) / 1e9;
-};
+const weiBigIntToGweiNumber = (weiBigInt) => Number(weiBigInt) / 1e9;
 
-// -----------------------------
-// App Component
-// -----------------------------
 function GameApp() {
-  // Game states
+  // Game State
   const [objects, setObjects] = useState([]);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(30);
@@ -128,7 +113,7 @@ function GameApp() {
   const [paused, setPaused] = useState(false);
   const [clickedObjects, setClickedObjects] = useState(new Set());
 
-  // UI states
+  // UI State
   const [showMenu, setShowMenu] = useState(false);
   const [activeTab, setActiveTab] = useState("game");
   const [scoreSaved, setScoreSaved] = useState(false);
@@ -144,7 +129,7 @@ function GameApp() {
   const [customGasPrice, setCustomGasPrice] = useState("");
   const [showCustomGas, setShowCustomGas] = useState(false);
 
-  // Web3 states
+  // Web3 State
   const [smartAccount, setSmartAccount] = useState(null);
   const [smartAccountAddress, setSmartAccountAddress] = useState(null);
   const [bundlerClient, setBundlerClient] = useState(null);
@@ -158,22 +143,22 @@ function GameApp() {
   const [isSavingScore, setIsSavingScore] = useState(false);
   const [pendingTxHash, setPendingTxHash] = useState(null);
 
-  // Auto-fill states
+  // Auto-fill State
   const [autoFillEnabled, setAutoFillEnabled] = useState(true);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
 
-  // Data states
+  // Data State
   const [leaderboard, setLeaderboard] = useState([]);
   const [playerStats, setPlayerStats] = useState({ totalScore: 0, totalGames: 0, pendingRewards: 0, totalClaimed: 0 });
 
-  // wagmi hooks
+  // Wagmi Hooks
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
-  // refs and constants
+  // Refs & Constants
   const spawnIntervalRef = useRef(null);
   const cleanupIntervalRef = useRef(null);
   const gameAreaRef = useRef(null);
@@ -182,9 +167,6 @@ function GameApp() {
   const IMAGE_SIZE = 35;
   const BORDER_WIDTH = 3;
 
-  // -----------------------------
-  // Helper: current gas options (returns object with gwei numbers)
-  // -----------------------------
   const getCurrentGasOptions = () => {
     if (showCustomGas && customGasPrice) {
       const customGwei = Number(customGasPrice);
@@ -200,24 +182,16 @@ function GameApp() {
     return GAS_SPEED_OPTIONS[selectedGasSpeed] || GAS_SPEED_OPTIONS.low;
   };
 
-  // -----------------------------
-  // Helper: calculate required MON for a given gas (estimatedGas)
-  // -----------------------------
   const calculateRequiredGasMON = (gasOptions, estimatedGas = 200000) => {
-    // gasOptions.gwei is a number in gwei
-    const buffer = 1.2; // 20%
+    const buffer = 1.2;
     const gwei = Number(gasOptions.gwei);
-    const weiPerUnit = gwei * 1e9; // wei
+    const weiPerUnit = gwei * 1e9;
     const totalWei = weiPerUnit * estimatedGas * buffer;
-    const totalMON = totalWei / 1e18; // convert wei to MON
-    return totalMON;
+    return totalWei / 1e18;
   };
 
-  // -----------------------------
-  // Bundler: create bundler client once walletClient/publicClient is available
-  // -----------------------------
+  // Bundler Client Initialization
   useEffect(() => {
-    // create bundler client and persist
     const createBundler = async () => {
       try {
         const bundler = createBundlerClient({
@@ -230,28 +204,19 @@ function GameApp() {
     };
 
     createBundler();
-    // no cleanup needed here
-  }, []); // only once
+  }, []);
 
-  // -----------------------------
-  // Utility: fetch Pimlico gas price (use fast tier recommended)
-  // returns { maxFeePerGasWei: BigInt, maxPriorityFeePerGasWei: BigInt, asGweiNumbers }
-  // -----------------------------
+  // Gas Price Fetching
   const fetchPimlicoGasPrice = async () => {
-    if (!bundlerClient) {
-      throw new Error("Bundler client not initialized");
-    }
+    if (!bundlerClient) throw new Error("Bundler client not initialized");
+    
     try {
       const res = await bundlerClient.request({ method: "pimlico_getUserOperationGasPrice", params: [] });
-      // expected shape may vary; try to be defensive
-      // Many pimlico endpoints return object: { userOperationGasPrice: { standard: {...}, fast: {...} } }
       const uop = res?.userOperationGasPrice || res;
       const best = uop?.fast || uop?.standard || uop;
-      // values might be strings in wei; convert to BigInt if needed
-      const maxFeePerGasWei =
-        typeof best?.maxFeePerGas === "string" ? BigInt(best.maxFeePerGas) : best?.maxFeePerGas ? BigInt(best.maxFeePerGas) : null;
-      const maxPriorityFeePerGasWei =
-        typeof best?.maxPriorityFeePerGas === "string" ? BigInt(best.maxPriorityFeePerGas) : best?.maxPriorityFeePerGas ? BigInt(best.maxPriorityFeePerGas) : null;
+      
+      const maxFeePerGasWei = typeof best?.maxFeePerGas === "string" ? BigInt(best.maxFeePerGas) : best?.maxFeePerGas ? BigInt(best.maxFeePerGas) : null;
+      const maxPriorityFeePerGasWei = typeof best?.maxPriorityFeePerGas === "string" ? BigInt(best.maxPriorityFeePerGas) : best?.maxPriorityFeePerGas ? BigInt(best.maxPriorityFeePerGas) : null;
 
       if (maxFeePerGasWei && maxPriorityFeePerGasWei) {
         return {
@@ -260,8 +225,6 @@ function GameApp() {
           asGwei: { maxFeePerGasGwei: Number(maxFeePerGasWei) / 1e9, maxPriorityFeePerGasGwei: Number(maxPriorityFeePerGasWei) / 1e9 },
         };
       }
-
-      // fallback: return null to let caller fallback to presets
       return null;
     } catch (err) {
       console.warn("Failed to fetch pimlico gas price:", err);
@@ -269,24 +232,24 @@ function GameApp() {
     }
   };
 
-  // -----------------------------
-  // Smart account initialization (create or re-create when walletClient or connection changes)
-  // -----------------------------
+  // Smart Account Initialization - FIXED VERSION
   useEffect(() => {
     let cancelled = false;
 
     const initializeSmartAccount = async () => {
-      if (!isConnected || !publicClient || !walletClient || !bundlerClient) return;
+      if (!isConnected || !publicClient || !walletClient || !bundlerClient) {
+        console.log("Missing dependencies for smart account initialization");
+        return;
+      }
+      
       try {
         setIsConnecting(true);
         console.log("🔄 Initializing Smart Account with Pimlico on Monad...");
 
-        // read addresses from walletClient
         const addresses = await walletClient.getAddresses();
         const userAddress = addresses[0];
         if (!userAddress) throw new Error("No address returned from wallet client");
 
-        // toMetaMaskSmartAccount uses the wallet signer; we rely on the Delegation Toolkit
         const smartAcc = await toMetaMaskSmartAccount({
           client: publicClient,
           implementation: Implementation.Hybrid,
@@ -301,9 +264,8 @@ function GameApp() {
         setSmartAccountAddress(smartAcc.address);
 
         console.log("✅ Smart Account created:", smartAcc.address);
-        console.log("✅ Using Pimlico bundler on Monad testnet");
 
-        // load balances & player data
+        // Load balances with error handling
         await loadAllBalances(userAddress, smartAcc.address);
         await loadPlayerStats(smartAcc.address);
         await loadLeaderboardData();
@@ -316,16 +278,16 @@ function GameApp() {
       }
     };
 
-    initializeSmartAccount();
+    if (isConnected && publicClient && walletClient && bundlerClient) {
+      initializeSmartAccount();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [isConnected, publicClient, walletClient, bundlerClient]); // re-run on connection changes
+  }, [isConnected, publicClient, walletClient, bundlerClient]);
 
-  // -----------------------------
-  // Preload images
-  // -----------------------------
+  // Image Preloading
   useEffect(() => {
     IMAGES.forEach((src) => {
       const img = new Image();
@@ -333,9 +295,7 @@ function GameApp() {
     });
   }, []);
 
-  // -----------------------------
-  // UI helpers
-  // -----------------------------
+  // UI Helpers
   const copyAddress = async () => {
     const addressToCopy = smartAccountAddress || address;
     if (!addressToCopy) return;
@@ -348,23 +308,29 @@ function GameApp() {
     }
   };
 
-  const formatAddress = (addr) => {
-    if (!addr) return "";
-    return `${addr.slice(0, 4)}...${addr.slice(-3)}`;
-  };
-  const formatFullAddress = (addr) => (addr ? addr : "");
+  const formatAddress = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
+  const formatFullAddress = (addr) => addr || "";
 
-  // -----------------------------
-  // Load balances, stats, leaderboard
-  // -----------------------------
+  // Data Loading - FIXED VERSION
   const loadAllBalances = async (mainAddress, smartAddress) => {
-    if (!publicClient) return;
+    if (!publicClient) {
+      console.log("Public client not available for loading balances");
+      return;
+    }
+    
     try {
-      // main MON
+      console.log("Loading balances for:", { mainAddress, smartAddress });
+      
       if (mainAddress) {
-        const mainMonBalanceWei = await publicClient.getBalance({ address: mainAddress });
-        setMainAccountMonBalance((Number(mainMonBalanceWei) / 1e18).toFixed(6));
-        // main WMON
+        try {
+          const mainMonBalanceWei = await publicClient.getBalance({ address: mainAddress });
+          setMainAccountMonBalance((Number(mainMonBalanceWei) / 1e18).toFixed(6));
+          console.log("Main MON balance:", (Number(mainMonBalanceWei) / 1e18).toFixed(6));
+        } catch (err) {
+          console.error("Error loading main MON balance:", err);
+          setMainAccountMonBalance("0");
+        }
+        
         if (WMON_ADDRESS) {
           try {
             const mainWmonBalanceWei = await publicClient.readContract({
@@ -374,6 +340,7 @@ function GameApp() {
               args: [mainAddress],
             });
             setMainAccountWmonBalance((Number(mainWmonBalanceWei) / 1e18).toFixed(4));
+            console.log("Main WMON balance:", (Number(mainWmonBalanceWei) / 1e18).toFixed(4));
           } catch (err) {
             console.error("Error loading main WMON balance:", err);
             setMainAccountWmonBalance("0");
@@ -381,10 +348,15 @@ function GameApp() {
         }
       }
 
-      // smart account balances
       if (smartAddress) {
-        const smartMonBalanceWei = await publicClient.getBalance({ address: smartAddress });
-        setMonBalance((Number(smartMonBalanceWei) / 1e18).toFixed(6));
+        try {
+          const smartMonBalanceWei = await publicClient.getBalance({ address: smartAddress });
+          setMonBalance((Number(smartMonBalanceWei) / 1e18).toFixed(6));
+          console.log("Smart MON balance:", (Number(smartMonBalanceWei) / 1e18).toFixed(6));
+        } catch (err) {
+          console.error("Error loading smart MON balance:", err);
+          setMonBalance("0");
+        }
 
         if (WMON_ADDRESS) {
           try {
@@ -395,6 +367,7 @@ function GameApp() {
               args: [smartAddress],
             });
             setWmonBalance((Number(smartWmonBalanceWei) / 1e18).toFixed(4));
+            console.log("Smart WMON balance:", (Number(smartWmonBalanceWei) / 1e18).toFixed(4));
           } catch (err) {
             console.error("Error loading smart WMON balance:", err);
             setWmonBalance("0");
@@ -408,6 +381,7 @@ function GameApp() {
 
   const loadPlayerStats = async (userAddress) => {
     if (!publicClient || !REWARD_CONTRACT_ADDRESS) return;
+    
     try {
       const stats = await publicClient.readContract({
         address: REWARD_CONTRACT_ADDRESS,
@@ -415,6 +389,7 @@ function GameApp() {
         functionName: "getPlayerStats",
         args: [userAddress],
       });
+      
       setPlayerStats({
         totalScore: Number(stats[0]),
         totalGames: Number(stats[1]),
@@ -429,18 +404,21 @@ function GameApp() {
 
   const loadLeaderboardData = async () => {
     if (!publicClient || !REWARD_CONTRACT_ADDRESS) return;
+    
     try {
       const data = await publicClient.readContract({
         address: REWARD_CONTRACT_ADDRESS,
         abi: REWARD_ABI,
         functionName: "getLeaderboard",
       });
+      
       const formatted = data.map((entry) => ({
         wallet: entry.wallet,
         score: Number(entry.score),
         gamesPlayed: Number(entry.gamesPlayed),
         totalEarned: Number(entry.totalEarned) / 1e18,
       }));
+      
       formatted.sort((a, b) => b.score - a.score);
       setLeaderboard(formatted);
     } catch (err) {
@@ -448,10 +426,7 @@ function GameApp() {
     }
   };
 
-  // -----------------------------
-  // Auto-fill gas from main wallet to smart account if needed
-  // requiredGas is in MON
-  // -----------------------------
+  // Auto-fill Gas
   const autoFillGasIfNeeded = async (requiredGasMON, operationType = "transaction") => {
     if (!autoFillEnabled || !smartAccountAddress || !address || !walletClient) return false;
 
@@ -462,22 +437,20 @@ function GameApp() {
       setIsAutoFilling(true);
       console.log(`🔄 Auto-filling ${requiredGasMON.toFixed(6)} MON for ${operationType}...`);
 
-      const transferAmountMON = Number((requiredGasMON * 1.1).toFixed(6)); // 10% buffer
+      const transferAmountMON = Number((requiredGasMON * 1.1).toFixed(6));
       if (Number(mainAccountMonBalance) < transferAmountMON) {
         console.log("❌ Main wallet doesn't have enough MON for auto-fill");
         return false;
       }
 
-      // send MON (value expects bigint from parseEther)
       const txHash = await walletClient.sendTransaction({
         to: smartAccountAddress,
         value: parseEther(String(transferAmountMON)),
       });
 
-      console.log(" Auto fill tx submitted:", txHash);
+      console.log("Auto fill tx submitted:", txHash);
       setPendingTxHash(txHash);
 
-      // wait a bit, then reload balances (simple wait used for reliability)
       await new Promise((r) => setTimeout(r, 4000));
       await loadAllBalances(address, smartAccountAddress);
 
@@ -491,18 +464,24 @@ function GameApp() {
     }
   };
 
-  // -----------------------------
-  // Wallet connect / disconnect
-  // -----------------------------
+  // Wallet Management - FIXED FOR MOBILE
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
-      // detect metamask
-      if (typeof window === "undefined" || typeof window.ethereum === "undefined") {
-        alert("MetaMask extension not found. Please install MetaMask or open in a supported browser.");
-        setIsConnecting(false);
-        return;
+      
+      // Check if MetaMask is installed
+      if (typeof window.ethereum === 'undefined') {
+        // For mobile, try to open MetaMask app
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          window.location.href = 'https://metamask.app.link/dapp/' + window.location.hostname;
+          return;
+        } else {
+          alert("MetaMask extension not found. Please install MetaMask or open in a supported browser.");
+          setIsConnecting(false);
+          return;
+        }
       }
+      
       await connect({ connector: metaMask() });
     } catch (err) {
       console.error("Connection error:", err);
@@ -514,10 +493,8 @@ function GameApp() {
 
   const disconnectWallet = () => {
     disconnect();
-    // reset state
     setSmartAccount(null);
     setSmartAccountAddress(null);
-    setBundlerClient(null);
     setWmonBalance("0");
     setMonBalance("0");
     setMainAccountMonBalance("0");
@@ -529,18 +506,9 @@ function GameApp() {
     setPendingTxHash(null);
     setAutoFillEnabled(true);
     setIsAutoFilling(false);
-    // recreate bundler client
-    const bundler = createBundlerClient({
-      transport: http(PIMLICO_BUNDLER_URL, { timeout: 60000, retryCount: 3 }),
-    });
-    setBundlerClient(bundler);
   };
 
-  // -----------------------------
-  // Transfer funds (both directions)
-  // Uses bundlerClient.sendUserOperation for smart-account -> main transfers
-  // and walletClient.sendTransaction for main -> smart transfers
-  // -----------------------------
+  // Transfer Functions
   const transferFunds = async () => {
     if (!transferAmount || !transferTo || !transferType || !transferDirection) {
       alert("Invalid transfer details");
@@ -561,11 +529,9 @@ function GameApp() {
         return;
       }
 
-      // choose gas options (the actual sendUserOperation will use dynamic pimlico values)
       const gasPreset = getCurrentGasOptions();
 
       if (transferDirection === "toSmart") {
-        // MAIN -> SMART (use walletClient.sendTransaction)
         if (!walletClient) throw new Error("Wallet client not available");
 
         if (transferType === "MON") {
@@ -580,7 +546,6 @@ function GameApp() {
           setPendingTxHash(txHash);
           alert(`✅ Sent ${amount} MON`);
         } else {
-          // WMON token transfer: call token contract via walletClient
           if (amount > Number(mainAccountWmonBalance)) {
             alert(`Insufficient WMON. Available: ${mainAccountWmonBalance}`);
             return;
@@ -598,20 +563,18 @@ function GameApp() {
           alert(`✅ Sent ${amount} WMON`);
         }
       } else {
-        // SMART -> MAIN (use bundlerClient.sendUserOperation)
         if (!bundlerClient || !smartAccount) {
           alert("Smart Account service not available. Please try again.");
           return;
         }
 
-        // fetch current pimlico gas prices (prefer fast)
         const pimlicoGas = await fetchPimlicoGasPrice();
         let maxFeePerGasWei = pimlicoGas?.maxFeePerGasWei ?? gweiToWeiBigInt(gasPreset.gwei);
         let maxPriorityFeePerGasWei = pimlicoGas?.maxPriorityFeePerGasWei ?? gweiToWeiBigInt(Math.max(1, Math.floor(gasPreset.gwei * 0.1)));
 
-        // estimate required MON and auto-fill if needed
         const estimatedGas = 200000;
         const requiredGasMON = calculateRequiredGasMON({ gwei: Number(weiBigIntToGweiNumber(maxFeePerGasWei)) }, estimatedGas);
+        
         if (Number(monBalance) < requiredGasMON) {
           if (autoFillEnabled) {
             const ok = await autoFillGasIfNeeded(requiredGasMON, "fund transfer");
@@ -683,7 +646,6 @@ function GameApp() {
         }
       }
 
-      // reset & reload
       setTransferAmount("");
       setTransferTo("");
       setShowTransferModal(false);
@@ -694,7 +656,6 @@ function GameApp() {
       if (msg.includes("timeout")) {
         alert("Transaction is taking longer than expected; check explorer later.");
       } else if (msg.includes("insufficient funds")) {
-        // attempt auto-fill once if enabled
         if (autoFillEnabled && !isAutoFilling) {
           const gasPreset = getCurrentGasOptions();
           const requiredGasMON = calculateRequiredGasMON(gasPreset, 200000);
@@ -713,9 +674,7 @@ function GameApp() {
     }
   };
 
-  // -----------------------------
-  // Quick transfer helpers
-  // -----------------------------
+  // Quick Transfer Helpers
   const quickTransferToSmart = async (type) => {
     if (!smartAccountAddress && !address) {
       alert("No smart account address found");
@@ -750,11 +709,10 @@ function GameApp() {
     setShowTransferModal(true);
   };
 
-  // -----------------------------
-  // Save score (smart account via pimlico)
-  // -----------------------------
+  // Game Actions
   const saveScoreAndAccumulate = async () => {
     if (!smartAccount || scoreSaved) return;
+    
     try {
       setIsSavingScore(true);
       console.log("🔄 Saving score via Smart Account with Pimlico...");
@@ -765,15 +723,12 @@ function GameApp() {
       }
 
       const gasPreset = getCurrentGasOptions();
-
-      // Attempt to fetch pimlico gas price; fallback to preset if fails
       const pimlicoGas = await fetchPimlicoGasPrice();
       const maxFeePerGasWei = pimlicoGas?.maxFeePerGasWei ?? gweiToWeiBigInt(gasPreset.gwei);
-      const maxPriorityFeePerGasWei =
-        pimlicoGas?.maxPriorityFeePerGasWei ?? gweiToWeiBigInt(Math.max(1, Math.floor(gasPreset.gwei * 0.1)));
+      const maxPriorityFeePerGasWei = pimlicoGas?.maxPriorityFeePerGasWei ?? gweiToWeiBigInt(Math.max(1, Math.floor(gasPreset.gwei * 0.1)));
 
-      // compute required MON
       const requiredGasMON = calculateRequiredGasMON({ gwei: Number(weiBigIntToGweiNumber(maxFeePerGasWei)) }, 250000);
+      
       if (Number(monBalance) < requiredGasMON) {
         if (autoFillEnabled) {
           const autoFillSuccess = await autoFillGasIfNeeded(requiredGasMON, "score saving");
@@ -829,7 +784,6 @@ Please send MON to: ${smartAccountAddress}`);
       console.error("Save score error:", error);
       const msg = (error?.message || "").toLowerCase();
       if (msg.includes("insufficient funds")) {
-        // try auto-fill once
         if (autoFillEnabled && !isAutoFilling) {
           const gasPreset = getCurrentGasOptions();
           const requiredGasMON = calculateRequiredGasMON(gasPreset, 250000);
@@ -852,9 +806,6 @@ Please send MON to: ${smartAccountAddress}`);
     }
   };
 
-  // -----------------------------
-  // Claim rewards
-  // -----------------------------
   const claimRewards = async () => {
     if (!smartAccount) return;
     if (pendingRewards < 1) {
@@ -869,14 +820,13 @@ Please send MON to: ${smartAccountAddress}`);
         return;
       }
 
-      // fetch pimlico gas
       const pimlicoGas = await fetchPimlicoGasPrice();
       const gasPreset = getCurrentGasOptions();
       const maxFeePerGasWei = pimlicoGas?.maxFeePerGasWei ?? gweiToWeiBigInt(gasPreset.gwei);
-      const maxPriorityFeePerGasWei =
-        pimlicoGas?.maxPriorityFeePerGasWei ?? gweiToWeiBigInt(Math.max(1, Math.floor(gasPreset.gwei * 0.1)));
+      const maxPriorityFeePerGasWei = pimlicoGas?.maxPriorityFeePerGasWei ?? gweiToWeiBigInt(Math.max(1, Math.floor(gasPreset.gwei * 0.1)));
 
       const requiredGasMON = calculateRequiredGasMON({ gwei: Number(weiBigIntToGweiNumber(maxFeePerGasWei)) }, 250000);
+      
       if (Number(monBalance) < requiredGasMON) {
         if (autoFillEnabled) {
           const autoFillSuccess = await autoFillGasIfNeeded(requiredGasMON, "reward claiming");
@@ -934,9 +884,7 @@ Please send MON to: ${smartAccountAddress}`);
     }
   };
 
-  // -----------------------------
-  // Game logic: object spawn/cleanup, timer
-  // -----------------------------
+  // Game Logic
   useEffect(() => {
     if (!gameStarted || gameOver || paused) {
       if (spawnIntervalRef.current) {
@@ -950,6 +898,7 @@ Please send MON to: ${smartAccountAddress}`);
       const gameArea = gameAreaRef.current;
       const width = gameArea ? gameArea.offsetWidth : BASE_GAME_WIDTH;
       const height = gameArea ? gameArea.offsetHeight : BASE_GAME_HEIGHT;
+      
       if (width > 0 && height > 0) {
         const newObj = {
           id: Date.now() + Math.random(),
@@ -966,9 +915,7 @@ Please send MON to: ${smartAccountAddress}`);
     spawnIntervalRef.current = setInterval(spawnObject, 200);
 
     return () => {
-      if (spawnIntervalRef.current) {
-        clearInterval(spawnIntervalRef.current);
-      }
+      if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
     };
   }, [gameStarted, gameOver, paused]);
 
@@ -987,9 +934,7 @@ Please send MON to: ${smartAccountAddress}`);
     }, 100);
 
     return () => {
-      if (cleanupIntervalRef.current) {
-        clearInterval(cleanupIntervalRef.current);
-      }
+      if (cleanupIntervalRef.current) clearInterval(cleanupIntervalRef.current);
     };
   }, [gameStarted, gameOver, paused]);
 
@@ -1004,9 +949,7 @@ Please send MON to: ${smartAccountAddress}`);
     }
   }, [time, gameStarted, gameOver, paused]);
 
-  // -----------------------------
-  // Game controls
-  // -----------------------------
+  // Game Controls
   const startGame = () => {
     if (!isConnected) {
       alert("Please connect your wallet first!");
@@ -1047,14 +990,14 @@ Please send MON to: ${smartAccountAddress}`);
     }, 300);
   };
 
-  // -----------------------------
-  // Render helpers (Transfer modal + Gas selector)
-  // -----------------------------
+  // Modal Components
   const renderTransferModal = () => {
     if (!showTransferModal) return null;
+    
     const directionLabel = transferDirection === "toSmart" ? "to Smart Account ⚡" : "to Main Wallet";
-    const sourceBalance =
-      transferDirection === "toSmart" ? (transferType === "MON" ? mainAccountMonBalance : mainAccountWmonBalance) : transferType === "MON" ? monBalance : wmonBalance;
+    const sourceBalance = transferDirection === "toSmart" 
+      ? (transferType === "MON" ? mainAccountMonBalance : mainAccountWmonBalance)
+      : (transferType === "MON" ? monBalance : wmonBalance);
 
     return (
       <div className="modal-overlay" onClick={(e) => e.stopPropagation()}>
@@ -1170,9 +1113,7 @@ Please send MON to: ${smartAccountAddress}`);
     );
   };
 
-  // -----------------------------
-  // Content renderer (game, leaderboard, stats)
-  // -----------------------------
+  // Content Renderer
   const renderContent = () => {
     const currentGasOptions = getCurrentGasOptions();
 
@@ -1381,9 +1322,6 @@ Please send MON to: ${smartAccountAddress}`);
     }
   };
 
-  // -----------------------------
-  // Render
-  // -----------------------------
   return (
     <div className="game-app">
       {renderTransferModal()}
@@ -1464,7 +1402,7 @@ Please send MON to: ${smartAccountAddress}`);
 
         <div className="header-center">
           <h1>🎯 Ego Bust</h1>
-          {smartAccountAddress && <span className="smart-account-badge">⚡ Smart Account {autoFillEnabled && "🤖"}</span>}
+          {/* REMOVED the smart account badge from here */}
         </div>
 
         <div className="header-right">
@@ -1477,16 +1415,18 @@ Please send MON to: ${smartAccountAddress}`);
           {isConnected ? (
             <div className="wallet-section">
               <div className="wallet-address-container">
-                <button onClick={copyAddress} className="wallet-address" title={`Smart Account: ${formatFullAddress(smartAccountAddress)}`}>
-                  <span className="address-text">{formatAddress(smartAccountAddress)}</span>
+                <button onClick={copyAddress} className="wallet-address" title={`${smartAccountAddress ? 'Smart Account' : 'Wallet'}: ${formatFullAddress(smartAccountAddress || address)}`}>
+                  <span className="address-text">{formatAddress(smartAccountAddress || address)}</span>
                   {copiedAddress && <span className="copy-tooltip">Copied!</span>}
-                  <span className="smart-indicator">⚡</span>
+                  {smartAccountAddress && <span className="smart-indicator">⚡</span>}
                 </button>
               </div>
               <button onClick={disconnectWallet} className="disconnect-btn">Disconnect</button>
             </div>
           ) : (
-            <button onClick={connectWallet} disabled={isConnecting} className="connect-btn">{isConnecting ? "Connecting..." : "Connect Wallet"}</button>
+            <button onClick={connectWallet} disabled={isConnecting} className="connect-btn">
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
+            </button>
           )}
         </div>
       </header>
@@ -1511,7 +1451,6 @@ Please send MON to: ${smartAccountAddress}`);
   );
 }
 
-// Wrap App with providers
 function App() {
   return (
     <WagmiProvider config={config}>
