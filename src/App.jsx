@@ -37,8 +37,9 @@ const config = createConfig({
 const queryClient = new QueryClient();
 
 // Pimlico Configuration
-const PIMLICO_API_URL = "https://api.pimlico.io/v2/10143/rpc?apikey=pim_WapePDipcDKyLBZrhxvqo7";
-const PIMLICO_BUNDLER_URL = PIMLICO_API_URL;
+const PIMLICO_BUNDLER_URL = import.meta.env.VITE_PIMLICO_BUNDLER_URL;
+const PIMLICO_API_KEY = import.meta.env.VITE_PIMLICO_API_KEY;
+const PIMLICO_API_URL = `${PIMLICO_BUNDLER_URL}?apikey=${PIMLICO_API_KEY}`;
 
 // Contract ABIs
 const WMON_ABI = [
