@@ -198,6 +198,7 @@ function GameApp() {
           transport: http(PIMLICO_BUNDLER_URL, { timeout: 60000, retryCount: 3 }),
         });
         setBundlerClient(bundler);
+        console.log("✅ Bundler client initialized");
       } catch (err) {
         console.error("Failed to create bundler client:", err);
       }
@@ -232,60 +233,82 @@ function GameApp() {
     }
   };
 
-  // Smart Account Initialization - FIXED FOR MOBILE
+  // Smart Account Initialization - COMPLETELY REWRITTEN
   useEffect(() => {
     let cancelled = false;
 
     const initializeSmartAccount = async () => {
-      if (!isConnected || !publicClient || !walletClient || !bundlerClient) {
-        console.log("Missing dependencies for smart account initialization");
+      if (!isConnected || !address || !publicClient || !walletClient || !bundlerClient) {
+        console.log("❌ Missing dependencies for smart account:", {
+          isConnected,
+          address,
+          publicClient: !!publicClient,
+          walletClient: !!walletClient,
+          bundlerClient: !!bundlerClient
+        });
         return;
       }
       
       try {
-        setIsConnecting(true);
-        console.log("🔄 Initializing Smart Account with Pimlico on Monad...");
-
-        const addresses = await walletClient.getAddresses();
-        const userAddress = addresses[0];
-        if (!userAddress) throw new Error("No address returned from wallet client");
-
+        console.log("🔄 Starting smart account initialization...");
+        
         const smartAcc = await toMetaMaskSmartAccount({
           client: publicClient,
           implementation: Implementation.Hybrid,
-          deployParams: [userAddress, [], [], []],
+          deployParams: [address, [], [], []],
           deploySalt: "0x",
           signer: { walletClient },
         });
 
-        if (cancelled) return;
+        if (cancelled) {
+          console.log("❌ Smart account initialization cancelled");
+          return;
+        }
 
+        console.log("✅ Smart Account created:", smartAcc.address);
         setSmartAccount(smartAcc);
         setSmartAccountAddress(smartAcc.address);
 
-        console.log("✅ Smart Account created:", smartAcc.address);
-
-        // Load balances immediately after smart account creation
-        await loadAllBalances(userAddress, smartAcc.address);
+        // Load balances immediately
+        console.log("🔄 Loading balances after smart account creation...");
+        await loadAllBalances(address, smartAcc.address);
+        
+        // Load player stats and leaderboard
         await loadPlayerStats(smartAcc.address);
         await loadLeaderboardData();
 
-        console.log("🎉 Smart Account fully initialized with Pimlico");
+        console.log("🎉 Smart Account fully initialized");
       } catch (error) {
         console.error("❌ Smart account initialization error:", error);
-      } finally {
-        if (!cancelled) setIsConnecting(false);
       }
     };
 
-    if (isConnected && publicClient && walletClient && bundlerClient) {
+    // Only initialize if we have all required dependencies
+    if (isConnected && address && publicClient && walletClient && bundlerClient) {
+      console.log("🚀 All dependencies ready, initializing smart account...");
       initializeSmartAccount();
+    } else {
+      console.log("⏳ Waiting for dependencies:", {
+        isConnected,
+        address,
+        publicClient: !!publicClient,
+        walletClient: !!walletClient,
+        bundlerClient: !!bundlerClient
+      });
     }
 
     return () => {
       cancelled = true;
     };
-  }, [isConnected, publicClient, walletClient, bundlerClient]);
+  }, [isConnected, address, publicClient, walletClient, bundlerClient]);
+
+  // Load balances when wallet connects (even before smart account)
+  useEffect(() => {
+    if (isConnected && address && publicClient) {
+      console.log("🔄 Loading main wallet balances on connection...");
+      loadAllBalances(address, null);
+    }
+  }, [isConnected, address, publicClient]);
 
   // Image Preloading
   useEffect(() => {
@@ -311,33 +334,35 @@ function GameApp() {
   const formatAddress = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
   const formatFullAddress = (addr) => addr || "";
 
-  // Data Loading - FIXED FOR MOBILE
+  // Data Loading - COMPLETELY REWRITTEN
   const loadAllBalances = async (mainAddress, smartAddress) => {
     if (!publicClient) {
-      console.log("Public client not available for loading balances");
+      console.log("❌ Public client not available for loading balances");
       return;
     }
     
     try {
-      console.log("Loading balances for:", { mainAddress, smartAddress });
+      console.log("💰 Loading balances for:", { mainAddress, smartAddress });
       
       // Load main wallet balances
       if (mainAddress) {
         try {
+          console.log("📥 Loading main MON balance...");
           const mainMonBalanceWei = await publicClient.getBalance({ 
             address: mainAddress 
           });
           const mainMonBalance = (Number(mainMonBalanceWei) / 1e18).toFixed(6);
           setMainAccountMonBalance(mainMonBalance);
-          console.log("Main MON balance loaded:", mainMonBalance);
+          console.log("✅ Main MON balance:", mainMonBalance);
         } catch (err) {
-          console.error("Error loading main MON balance:", err);
+          console.error("❌ Error loading main MON balance:", err);
           setMainAccountMonBalance("0");
         }
         
         // Load main WMON balance
         if (WMON_ADDRESS) {
           try {
+            console.log("📥 Loading main WMON balance...");
             const mainWmonBalanceWei = await publicClient.readContract({
               address: WMON_ADDRESS,
               abi: WMON_ABI,
@@ -346,9 +371,9 @@ function GameApp() {
             });
             const mainWmonBalance = (Number(mainWmonBalanceWei) / 1e18).toFixed(4);
             setMainAccountWmonBalance(mainWmonBalance);
-            console.log("Main WMON balance loaded:", mainWmonBalance);
+            console.log("✅ Main WMON balance:", mainWmonBalance);
           } catch (err) {
-            console.error("Error loading main WMON balance:", err);
+            console.error("❌ Error loading main WMON balance:", err);
             setMainAccountWmonBalance("0");
           }
         }
@@ -357,20 +382,22 @@ function GameApp() {
       // Load smart account balances
       if (smartAddress) {
         try {
+          console.log("📥 Loading smart account MON balance...");
           const smartMonBalanceWei = await publicClient.getBalance({ 
             address: smartAddress 
           });
           const smartMonBalance = (Number(smartMonBalanceWei) / 1e18).toFixed(6);
           setMonBalance(smartMonBalance);
-          console.log("Smart MON balance loaded:", smartMonBalance);
+          console.log("✅ Smart MON balance:", smartMonBalance);
         } catch (err) {
-          console.error("Error loading smart MON balance:", err);
+          console.error("❌ Error loading smart MON balance:", err);
           setMonBalance("0");
         }
 
         // Load smart WMON balance
         if (WMON_ADDRESS) {
           try {
+            console.log("📥 Loading smart account WMON balance...");
             const smartWmonBalanceWei = await publicClient.readContract({
               address: WMON_ADDRESS,
               abi: WMON_ABI,
@@ -379,15 +406,17 @@ function GameApp() {
             });
             const smartWmonBalance = (Number(smartWmonBalanceWei) / 1e18).toFixed(4);
             setWmonBalance(smartWmonBalance);
-            console.log("Smart WMON balance loaded:", smartWmonBalance);
+            console.log("✅ Smart WMON balance:", smartWmonBalance);
           } catch (err) {
-            console.error("Error loading smart WMON balance:", err);
+            console.error("❌ Error loading smart WMON balance:", err);
             setWmonBalance("0");
           }
         }
       }
+      
+      console.log("💰 All balances loaded successfully");
     } catch (err) {
-      console.error("Error loading balances:", err);
+      console.error("❌ Error loading balances:", err);
     }
   };
 
@@ -476,12 +505,12 @@ function GameApp() {
     }
   };
 
-  // Wallet Management - FIXED FOR ALL WALLETS
+  // Wallet Management - SIMPLIFIED
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
       
-      // Check if any Ethereum provider is available (works with any wallet)
+      // Check if any Ethereum provider is available
       if (typeof window.ethereum === 'undefined') {
         alert("No Ethereum wallet found. Please install a Web3 wallet like MetaMask, Trust Wallet, or Coinbase Wallet.");
         setIsConnecting(false);
