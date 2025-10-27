@@ -39,11 +39,21 @@ const queryClient = new QueryClient();
 // Pimlico Configuration
 const PIMLICO_BUNDLER_URL = import.meta.env.VITE_PIMLICO_BUNDLER_URL;
 const PIMLICO_API_KEY = import.meta.env.VITE_PIMLICO_API_KEY;
-const PIMLICO_API_URL = `${PIMLICO_BUNDLER_URL}?apikey=${PIMLICO_API_KEY}`;
 
 console.log("✅ PIMLICO_BUNDLER_URL =", PIMLICO_BUNDLER_URL);
-console.log("✅ PIMLICO_API_KEY =", PIMLICO_API_KEY);
-console.log("✅ PIMLICO_API_URL =", PIMLICO_API_URL);
+console.log("✅ PIMLICO_API_KEY =", PIMLICO_API_KEY ? "***" + PIMLICO_API_KEY.slice(-4) : "undefined");
+
+// Create HTTP transport with proper headers
+const pimlicoTransport = http(PIMLICO_BUNDLER_URL, {
+  timeout: 60000,
+  retryCount: 3,
+  fetchOptions: {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(PIMLICO_API_KEY && { 'Authorization': `Bearer ${PIMLICO_API_KEY}` })
+    }
+  }
+});
 
 // Contract ABIs
 const WMON_ABI = [
@@ -200,10 +210,10 @@ function GameApp() {
     const createBundler = async () => {
       try {
         const bundler = createBundlerClient({
-          transport: http(PIMLICO_API_URL, { timeout: 60000, retryCount: 3 }),
+          transport: pimlicoTransport,
         });
         setBundlerClient(bundler);
-        console.log("✅ Bundler client initialized");
+        console.log("✅ Bundler client initialized with Pimlico");
       } catch (err) {
         console.error("Failed to create bundler client:", err);
       }
@@ -238,7 +248,7 @@ function GameApp() {
     }
   };
 
-  // Smart Account Initialization - COMPLETELY REWRITTEN
+  // Smart Account Initialization
   useEffect(() => {
     let cancelled = false;
 
@@ -339,7 +349,7 @@ function GameApp() {
   const formatAddress = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
   const formatFullAddress = (addr) => addr || "";
 
-  // Data Loading - COMPLETELY REWRITTEN
+  // Data Loading
   const loadAllBalances = async (mainAddress, smartAddress) => {
     if (!publicClient) {
       console.log("❌ Public client not available for loading balances");
@@ -510,7 +520,7 @@ function GameApp() {
     }
   };
 
-  // Wallet Management - SIMPLIFIED
+  // Wallet Management
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
@@ -1443,7 +1453,6 @@ Please send MON to: ${smartAccountAddress}`);
 
         <div className="header-center">
           <h1>🎯 Ego Bust</h1>
-          {/* REMOVED the smart account badge from here */}
         </div>
 
         <div className="header-right">
