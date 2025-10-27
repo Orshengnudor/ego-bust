@@ -232,7 +232,7 @@ function GameApp() {
     }
   };
 
-  // Smart Account Initialization - FIXED VERSION
+  // Smart Account Initialization - FIXED FOR MOBILE
   useEffect(() => {
     let cancelled = false;
 
@@ -265,7 +265,7 @@ function GameApp() {
 
         console.log("✅ Smart Account created:", smartAcc.address);
 
-        // Load balances with error handling
+        // Load balances immediately after smart account creation
         await loadAllBalances(userAddress, smartAcc.address);
         await loadPlayerStats(smartAcc.address);
         await loadLeaderboardData();
@@ -311,7 +311,7 @@ function GameApp() {
   const formatAddress = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
   const formatFullAddress = (addr) => addr || "";
 
-  // Data Loading - FIXED VERSION
+  // Data Loading - FIXED FOR MOBILE
   const loadAllBalances = async (mainAddress, smartAddress) => {
     if (!publicClient) {
       console.log("Public client not available for loading balances");
@@ -321,16 +321,21 @@ function GameApp() {
     try {
       console.log("Loading balances for:", { mainAddress, smartAddress });
       
+      // Load main wallet balances
       if (mainAddress) {
         try {
-          const mainMonBalanceWei = await publicClient.getBalance({ address: mainAddress });
-          setMainAccountMonBalance((Number(mainMonBalanceWei) / 1e18).toFixed(6));
-          console.log("Main MON balance:", (Number(mainMonBalanceWei) / 1e18).toFixed(6));
+          const mainMonBalanceWei = await publicClient.getBalance({ 
+            address: mainAddress 
+          });
+          const mainMonBalance = (Number(mainMonBalanceWei) / 1e18).toFixed(6);
+          setMainAccountMonBalance(mainMonBalance);
+          console.log("Main MON balance loaded:", mainMonBalance);
         } catch (err) {
           console.error("Error loading main MON balance:", err);
           setMainAccountMonBalance("0");
         }
         
+        // Load main WMON balance
         if (WMON_ADDRESS) {
           try {
             const mainWmonBalanceWei = await publicClient.readContract({
@@ -339,8 +344,9 @@ function GameApp() {
               functionName: "balanceOf",
               args: [mainAddress],
             });
-            setMainAccountWmonBalance((Number(mainWmonBalanceWei) / 1e18).toFixed(4));
-            console.log("Main WMON balance:", (Number(mainWmonBalanceWei) / 1e18).toFixed(4));
+            const mainWmonBalance = (Number(mainWmonBalanceWei) / 1e18).toFixed(4);
+            setMainAccountWmonBalance(mainWmonBalance);
+            console.log("Main WMON balance loaded:", mainWmonBalance);
           } catch (err) {
             console.error("Error loading main WMON balance:", err);
             setMainAccountWmonBalance("0");
@@ -348,16 +354,21 @@ function GameApp() {
         }
       }
 
+      // Load smart account balances
       if (smartAddress) {
         try {
-          const smartMonBalanceWei = await publicClient.getBalance({ address: smartAddress });
-          setMonBalance((Number(smartMonBalanceWei) / 1e18).toFixed(6));
-          console.log("Smart MON balance:", (Number(smartMonBalanceWei) / 1e18).toFixed(6));
+          const smartMonBalanceWei = await publicClient.getBalance({ 
+            address: smartAddress 
+          });
+          const smartMonBalance = (Number(smartMonBalanceWei) / 1e18).toFixed(6);
+          setMonBalance(smartMonBalance);
+          console.log("Smart MON balance loaded:", smartMonBalance);
         } catch (err) {
           console.error("Error loading smart MON balance:", err);
           setMonBalance("0");
         }
 
+        // Load smart WMON balance
         if (WMON_ADDRESS) {
           try {
             const smartWmonBalanceWei = await publicClient.readContract({
@@ -366,8 +377,9 @@ function GameApp() {
               functionName: "balanceOf",
               args: [smartAddress],
             });
-            setWmonBalance((Number(smartWmonBalanceWei) / 1e18).toFixed(4));
-            console.log("Smart WMON balance:", (Number(smartWmonBalanceWei) / 1e18).toFixed(4));
+            const smartWmonBalance = (Number(smartWmonBalanceWei) / 1e18).toFixed(4);
+            setWmonBalance(smartWmonBalance);
+            console.log("Smart WMON balance loaded:", smartWmonBalance);
           } catch (err) {
             console.error("Error loading smart WMON balance:", err);
             setWmonBalance("0");
@@ -464,28 +476,23 @@ function GameApp() {
     }
   };
 
-  // Wallet Management - FIXED FOR MOBILE
+  // Wallet Management - FIXED FOR ALL WALLETS
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
       
-      // Check if MetaMask is installed
+      // Check if any Ethereum provider is available (works with any wallet)
       if (typeof window.ethereum === 'undefined') {
-        // For mobile, try to open MetaMask app
-        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-          window.location.href = 'https://metamask.app.link/dapp/' + window.location.hostname;
-          return;
-        } else {
-          alert("MetaMask extension not found. Please install MetaMask or open in a supported browser.");
-          setIsConnecting(false);
-          return;
-        }
+        alert("No Ethereum wallet found. Please install a Web3 wallet like MetaMask, Trust Wallet, or Coinbase Wallet.");
+        setIsConnecting(false);
+        return;
       }
       
+      // Connect with any available wallet
       await connect({ connector: metaMask() });
     } catch (err) {
       console.error("Connection error:", err);
-      alert("Please connect your MetaMask wallet to play!");
+      alert("Failed to connect wallet. Please make sure your wallet is unlocked and try again.");
     } finally {
       setIsConnecting(false);
     }
