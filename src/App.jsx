@@ -233,25 +233,20 @@ function GameApp() {
     }
   };
 
-  // Smart Account Initialization - COMPLETELY REWRITTEN
+  // Smart Account Initialization - FIXED FOR MOBILE
   useEffect(() => {
     let cancelled = false;
 
     const initializeSmartAccount = async () => {
       if (!isConnected || !address || !publicClient || !walletClient || !bundlerClient) {
-        console.log("❌ Missing dependencies for smart account:", {
-          isConnected,
-          address,
-          publicClient: !!publicClient,
-          walletClient: !!walletClient,
-          bundlerClient: !!bundlerClient
-        });
+        console.log("❌ Missing dependencies for smart account");
         return;
       }
       
       try {
-        console.log("🔄 Starting smart account initialization...");
+        console.log("🔄 Starting smart account initialization for:", address);
         
+        // Use the connected wallet address directly
         const smartAcc = await toMetaMaskSmartAccount({
           client: publicClient,
           implementation: Implementation.Hybrid,
@@ -260,17 +255,13 @@ function GameApp() {
           signer: { walletClient },
         });
 
-        if (cancelled) {
-          console.log("❌ Smart account initialization cancelled");
-          return;
-        }
+        if (cancelled) return;
 
         console.log("✅ Smart Account created:", smartAcc.address);
         setSmartAccount(smartAcc);
         setSmartAccountAddress(smartAcc.address);
 
         // Load balances immediately
-        console.log("🔄 Loading balances after smart account creation...");
         await loadAllBalances(address, smartAcc.address);
         
         // Load player stats and leaderboard
@@ -280,21 +271,14 @@ function GameApp() {
         console.log("🎉 Smart Account fully initialized");
       } catch (error) {
         console.error("❌ Smart account initialization error:", error);
+        // Don't set loading to false on error - let user retry
       }
     };
 
-    // Only initialize if we have all required dependencies
+    // Initialize when all dependencies are ready
     if (isConnected && address && publicClient && walletClient && bundlerClient) {
       console.log("🚀 All dependencies ready, initializing smart account...");
       initializeSmartAccount();
-    } else {
-      console.log("⏳ Waiting for dependencies:", {
-        isConnected,
-        address,
-        publicClient: !!publicClient,
-        walletClient: !!walletClient,
-        bundlerClient: !!bundlerClient
-      });
     }
 
     return () => {
@@ -302,10 +286,10 @@ function GameApp() {
     };
   }, [isConnected, address, publicClient, walletClient, bundlerClient]);
 
-  // Load balances when wallet connects (even before smart account)
+  // Load main wallet balances when connected
   useEffect(() => {
     if (isConnected && address && publicClient) {
-      console.log("🔄 Loading main wallet balances on connection...");
+      console.log("🔄 Loading main wallet balances...");
       loadAllBalances(address, null);
     }
   }, [isConnected, address, publicClient]);
@@ -334,20 +318,19 @@ function GameApp() {
   const formatAddress = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
   const formatFullAddress = (addr) => addr || "";
 
-  // Data Loading - COMPLETELY REWRITTEN
+  // Data Loading
   const loadAllBalances = async (mainAddress, smartAddress) => {
     if (!publicClient) {
-      console.log("❌ Public client not available for loading balances");
+      console.log("❌ Public client not available");
       return;
     }
     
     try {
-      console.log("💰 Loading balances for:", { mainAddress, smartAddress });
+      console.log("💰 Loading balances...");
       
       // Load main wallet balances
       if (mainAddress) {
         try {
-          console.log("📥 Loading main MON balance...");
           const mainMonBalanceWei = await publicClient.getBalance({ 
             address: mainAddress 
           });
@@ -362,7 +345,6 @@ function GameApp() {
         // Load main WMON balance
         if (WMON_ADDRESS) {
           try {
-            console.log("📥 Loading main WMON balance...");
             const mainWmonBalanceWei = await publicClient.readContract({
               address: WMON_ADDRESS,
               abi: WMON_ABI,
@@ -382,7 +364,6 @@ function GameApp() {
       // Load smart account balances
       if (smartAddress) {
         try {
-          console.log("📥 Loading smart account MON balance...");
           const smartMonBalanceWei = await publicClient.getBalance({ 
             address: smartAddress 
           });
@@ -397,7 +378,6 @@ function GameApp() {
         // Load smart WMON balance
         if (WMON_ADDRESS) {
           try {
-            console.log("📥 Loading smart account WMON balance...");
             const smartWmonBalanceWei = await publicClient.readContract({
               address: WMON_ADDRESS,
               abi: WMON_ABI,
@@ -413,8 +393,6 @@ function GameApp() {
           }
         }
       }
-      
-      console.log("💰 All balances loaded successfully");
     } catch (err) {
       console.error("❌ Error loading balances:", err);
     }
@@ -505,19 +483,12 @@ function GameApp() {
     }
   };
 
-  // Wallet Management - SIMPLIFIED
+  // Wallet Management - FIXED FOR ALL WALLETS
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
       
-      // Check if any Ethereum provider is available
-      if (typeof window.ethereum === 'undefined') {
-        alert("No Ethereum wallet found. Please install a Web3 wallet like MetaMask, Trust Wallet, or Coinbase Wallet.");
-        setIsConnecting(false);
-        return;
-      }
-      
-      // Connect with any available wallet
+      // Simple connection without any redirects or specific wallet checks
       await connect({ connector: metaMask() });
     } catch (err) {
       console.error("Connection error:", err);
@@ -544,7 +515,7 @@ function GameApp() {
     setIsAutoFilling(false);
   };
 
-  // Transfer Functions
+  // Transfer Functions - FIXED
   const transferFunds = async () => {
     if (!transferAmount || !transferTo || !transferType || !transferDirection) {
       alert("Invalid transfer details");
@@ -568,7 +539,10 @@ function GameApp() {
       const gasPreset = getCurrentGasOptions();
 
       if (transferDirection === "toSmart") {
-        if (!walletClient) throw new Error("Wallet client not available");
+        if (!walletClient) {
+          alert("Wallet not available");
+          return;
+        }
 
         if (transferType === "MON") {
           if (amount > Number(mainAccountMonBalance)) {
@@ -745,9 +719,12 @@ function GameApp() {
     setShowTransferModal(true);
   };
 
-  // Game Actions
+  // Game Actions - FIXED
   const saveScoreAndAccumulate = async () => {
-    if (!smartAccount || scoreSaved) return;
+    if (!smartAccount || scoreSaved) {
+      alert("Smart account not ready or score already saved");
+      return;
+    }
     
     try {
       setIsSavingScore(true);
