@@ -43,10 +43,10 @@ const PIMLICO_API_KEY = import.meta.env.VITE_PIMLICO_API_KEY;
 console.log("✅ PIMLICO_BUNDLER_URL =", PIMLICO_BUNDLER_URL);
 console.log("✅ PIMLICO_API_KEY =", PIMLICO_API_KEY ? "***" + PIMLICO_API_KEY.slice(-4) : "undefined");
 
-// Create HTTP transport with proper headers
+// Create HTTP transport with proper headers and increased timeout for production
 const pimlicoTransport = http(PIMLICO_BUNDLER_URL, {
-  timeout: 60000,
-  retryCount: 3,
+  timeout: 120000, // Increased timeout for production
+  retryCount: 5,   // Increased retries for production
   fetchOptions: {
     headers: {
       'Content-Type': 'application/json',
@@ -157,6 +157,7 @@ function GameApp() {
   const [isClaiming, setIsClaiming] = useState(false);
   const [isSavingScore, setIsSavingScore] = useState(false);
   const [pendingTxHash, setPendingTxHash] = useState(null);
+  const [lastUserOpHash, setLastUserOpHash] = useState(null);
 
   // Auto-fill State
   const [autoFillEnabled, setAutoFillEnabled] = useState(true);
@@ -555,8 +556,35 @@ function GameApp() {
     setScoreSaved(false);
     setCopiedAddress(false);
     setPendingTxHash(null);
+    setLastUserOpHash(null);
     setAutoFillEnabled(true);
     setIsAutoFilling(false);
+  };
+
+  // Enhanced User Operation waiting with better error handling
+  const waitForUserOperationReceiptWithRetry = async (hash, maxRetries = 3) => {
+    if (!bundlerClient) throw new Error("Bundler client not available");
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Waiting for User Operation receipt (attempt ${attempt}/${maxRetries})...`);
+        const result = await bundlerClient.waitForUserOperationReceipt({ 
+          hash, 
+          timeout: 180000 // Increased timeout to 3 minutes for production
+        });
+        console.log("✅ User Operation receipt received:", result);
+        return result;
+      } catch (error) {
+        console.warn(`Attempt ${attempt} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
   };
 
   // Transfer Functions
@@ -660,10 +688,19 @@ function GameApp() {
             maxPriorityFeePerGas: maxPriorityFeePerGasWei,
           });
 
-          setPendingTxHash(userOpHash);
-          const { receipt } = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash, timeout: 120000 });
-          console.log("Transaction confirmed:", receipt.transactionHash);
-          alert(`✅ Successfully transferred ${amount} MON`);
+          setLastUserOpHash(userOpHash);
+          console.log("User Operation submitted:", userOpHash);
+
+          try {
+            const { receipt } = await waitForUserOperationReceiptWithRetry(userOpHash);
+            console.log("Transaction confirmed:", receipt.transactionHash);
+            setPendingTxHash(receipt.transactionHash);
+            alert(`✅ Successfully transferred ${amount} MON`);
+          } catch (error) {
+            console.warn("User Operation waiting timed out, but it might still succeed");
+            setLastUserOpHash(userOpHash);
+            alert(`⏳ Transaction submitted but taking longer than expected. UserOp Hash: ${userOpHash.slice(0, 10)}...\n\nCheck explorer later for confirmation.`);
+          }
         } else {
           if (amount > Number(wmonBalance)) {
             alert(`Insufficient WMON balance. Available: ${wmonBalance}`);
@@ -690,10 +727,19 @@ function GameApp() {
             maxPriorityFeePerGas: maxPriorityFeePerGasWei,
           });
 
-          setPendingTxHash(userOpHash);
-          const { receipt } = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash, timeout: 120000 });
-          console.log("Transaction confirmed:", receipt.transactionHash);
-          alert(`✅ Successfully transferred ${amount} WMON`);
+          setLastUserOpHash(userOpHash);
+          console.log("User Operation submitted:", userOpHash);
+
+          try {
+            const { receipt } = await waitForUserOperationReceiptWithRetry(userOpHash);
+            console.log("Transaction confirmed:", receipt.transactionHash);
+            setPendingTxHash(receipt.transactionHash);
+            alert(`✅ Successfully transferred ${amount} WMON`);
+          } catch (error) {
+            console.warn("User Operation waiting timed out, but it might still succeed");
+            setLastUserOpHash(userOpHash);
+            alert(`⏳ Transaction submitted but taking longer than expected. UserOp Hash: ${userOpHash.slice(0, 10)}...\n\nCheck explorer later for confirmation.`);
+          }
         }
       }
 
@@ -818,19 +864,26 @@ Please send MON to: ${smartAccountAddress}`);
       });
 
       console.log("Score save user operation hash:", userOpHash);
-      setPendingTxHash(userOpHash);
+      setLastUserOpHash(userOpHash);
 
-      const { receipt } = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash, timeout: 120000 });
-      console.log("🎉 Transaction confirmed:", receipt.transactionHash);
+      try {
+        const { receipt } = await waitForUserOperationReceiptWithRetry(userOpHash);
+        console.log("🎉 Transaction confirmed:", receipt.transactionHash);
+        setPendingTxHash(receipt.transactionHash);
+        setScoreSaved(true);
+        setPendingTxHash(null);
 
-      setScoreSaved(true);
-      setPendingTxHash(null);
+        await loadAllBalances(address, smartAccountAddress);
+        await loadPlayerStats(smartAccountAddress);
+        await loadLeaderboardData();
 
-      await loadAllBalances(address, smartAccountAddress);
-      await loadPlayerStats(smartAccountAddress);
-      await loadLeaderboardData();
-
-      alert("🎉 Score saved successfully with Pimlico!");
+        alert("🎉 Score saved successfully with Pimlico!");
+      } catch (error) {
+        console.warn("User Operation waiting timed out, but it might still succeed");
+        setLastUserOpHash(userOpHash);
+        alert(`⏳ Score save submitted but taking longer than expected. UserOp Hash: ${userOpHash.slice(0, 10)}...\n\nYour score might be saved. Check your stats later.`);
+        setScoreSaved(true); // Assume it will succeed
+      }
     } catch (error) {
       console.error("Save score error:", error);
       const msg = (error?.message || "").toLowerCase();
@@ -905,12 +958,21 @@ Please send MON to: ${smartAccountAddress}`);
         maxPriorityFeePerGas: maxPriorityFeePerGasWei,
       });
 
-      const { receipt } = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash, timeout: 120000 });
-      alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON using Pimlico!`);
+      setLastUserOpHash(userOpHash);
 
-      await loadAllBalances(address, smartAccountAddress);
-      await loadPlayerStats(smartAccountAddress);
-      await loadLeaderboardData();
+      try {
+        const { receipt } = await waitForUserOperationReceiptWithRetry(userOpHash);
+        setPendingTxHash(receipt.transactionHash);
+        alert(`🎉 Successfully claimed ${pendingRewards.toFixed(2)} WMON using Pimlico!`);
+
+        await loadAllBalances(address, smartAccountAddress);
+        await loadPlayerStats(smartAccountAddress);
+        await loadLeaderboardData();
+      } catch (error) {
+        console.warn("User Operation waiting timed out, but it might still succeed");
+        setLastUserOpHash(userOpHash);
+        alert(`⏳ Reward claim submitted but taking longer than expected. UserOp Hash: ${userOpHash.slice(0, 10)}...\n\nCheck your balance later.`);
+      }
     } catch (error) {
       console.error("Error claiming rewards:", error);
       const msg = (error?.message || "").toLowerCase();
@@ -1343,14 +1405,19 @@ Please send MON to: ${smartAccountAddress}`);
                   </button>
                 </div>
 
-                {pendingTxHash && (
+                {(pendingTxHash || lastUserOpHash) && (
                   <div className="mt-4 p-3 bg-blue-800 rounded-lg">
-                    <p className="text-sm">⏳ Transaction submitted: {pendingTxHash.slice(0, 10)}...</p>
+                    {pendingTxHash && (
+                      <p className="text-sm">⏳ Transaction submitted: {pendingTxHash.slice(0, 10)}...</p>
+                    )}
+                    {lastUserOpHash && (
+                      <p className="text-sm">⏳ UserOp submitted: {lastUserOpHash.slice(0, 10)}...</p>
+                    )}
                     <p className="text-xs opacity-80">
                       Using Pimlico {currentGasOptions.name}
                       {autoFillEnabled && " • Auto fill ready"}
                     </p>
-                    <button onClick={() => window.open(`https://testnet.monadexplorer.com/tx/${pendingTxHash}`, "_blank")} className="text-xs underline mt-1 text-yellow-300">
+                    <button onClick={() => window.open(`https://testnet.monadexplorer.com/tx/${pendingTxHash || lastUserOpHash}`, "_blank")} className="text-xs underline mt-1 text-yellow-300">
                       View on Explorer
                     </button>
                   </div>
@@ -1494,6 +1561,11 @@ Please send MON to: ${smartAccountAddress}`);
           <p style={{ color: "#10B981", fontSize: "0.7rem", marginTop: "0.5rem" }}>
             Pimlico bundler • Gas: {getCurrentGasOptions().name} ({getCurrentGasOptions().gwei} gwei)
             {autoFillEnabled && " • Auto fill ready"}
+          </p>
+        )}
+        {lastUserOpHash && (
+          <p style={{ color: "#F59E0B", fontSize: "0.7rem", marginTop: "0.5rem" }}>
+            Last UserOp: {lastUserOpHash.slice(0, 10)}... (check explorer)
           </p>
         )}
       </footer>
